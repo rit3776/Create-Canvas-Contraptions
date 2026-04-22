@@ -1,0 +1,10 @@
+{
+  "variants": {
+    "facing=north": { "model": "canvascontraptions:block/painted_block" },
+    "facing=south": { "model": "canvascontraptions:block/painted_block", "y": 180 },
+    "facing=east": {  "model": "canvascontraptions:block/painted_block", "y": 90 },
+    "facing=west": {  "model": "canvascontraptions:block/painted_block", "y": 270 },
+    "facing=up": {    "model": "canvascontraptions:block/painted_block", "x": 90 },
+    "facing=down": {  "model": "canvascontraptions:block/painted_block", "x": -90 }
+  }
+}

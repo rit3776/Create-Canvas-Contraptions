@@ -1,0 +1,55 @@
+package dev.rit3776.canvascontraptions;
+
+import com.mojang.blaze3d.vertex.PoseStack;
+import com.mojang.math.Axis;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.renderer.MultiBufferSource;
+import net.minecraft.client.renderer.blockentity.BlockEntityRenderer;
+import net.minecraft.client.renderer.blockentity.BlockEntityRendererProvider;
+import net.minecraft.core.Direction;
+import net.minecraft.world.level.saveddata.maps.MapItemSavedData;
+
+public class PaintedBlockRenderer implements BlockEntityRenderer<PaintedBlockEntity> {
+    public PaintedBlockRenderer(BlockEntityRendererProvider.Context context) {
+    }
+
+    @Override
+    public void render(PaintedBlockEntity be, float partialTicks, PoseStack poseStack,
+                       MultiBufferSource buffer, int combinedLight, int combinedOverlay) {
+        int mapId = be.getMapId();
+        if (mapId < 0) return;
+
+        if (be.getLevel() == null) return;
+        MapItemSavedData data = ClientMapCache.getOrCreate(mapId, be.getLevel());
+        
+        Direction facing = be.getBlockState().getValue(PaintedBlock.FACING);
+        
+        if (!ClientMapCache.hasData(mapId)) return;
+
+        poseStack.pushPose();
+
+        poseStack.translate(0.5, 0.5, 0.5);
+
+        // Standard rotations to point local +Z at world 'facing'
+        switch (facing) {
+            case NORTH -> poseStack.mulPose(Axis.YP.rotationDegrees(180));
+            case EAST  -> poseStack.mulPose(Axis.YP.rotationDegrees(90));
+            case WEST  -> poseStack.mulPose(Axis.YP.rotationDegrees(270));
+            case UP    -> poseStack.mulPose(Axis.XP.rotationDegrees(-90));
+            case DOWN  -> poseStack.mulPose(Axis.XP.rotationDegrees(90));
+            default    -> {} // SOUTH
+        }
+
+        float angle = be.getRotation() * 90.0f;
+        poseStack.mulPose(Axis.ZP.rotationDegrees(angle));
+
+        // Adjusted offset to be slightly more towards the "air" side to avoid burying
+        poseStack.translate(-0.5, 0.5, -0.485);
+        poseStack.scale(1f / 128f, -1f / 128f, 1f);
+
+        Minecraft.getInstance().gameRenderer.getMapRenderer()
+                .render(poseStack, buffer, mapId, data, true, combinedLight);
+
+        poseStack.popPose();
+    }
+}

@@ -1,0 +1,16 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "pattern": [
+    "Y",
+    "X",
+    "Y"
+  ],
+  "key": {
+    "X": { "item": "create:cardboard" },
+    "Y": { "item": "minecraft:paper" }
+  },
+  "result": {
+    "item": "canvascontraptions:blank_drafting_paper",
+    "count": 2
+  }
+}

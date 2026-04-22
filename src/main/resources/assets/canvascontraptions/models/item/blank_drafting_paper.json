@@ -1,0 +1,6 @@
+{
+  "parent": "minecraft:item/generated",
+  "textures": {
+    "layer0": "canvascontraptions:item/blank_drafting_paper"
+  }
+}
