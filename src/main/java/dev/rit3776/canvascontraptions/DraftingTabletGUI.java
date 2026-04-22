@@ -255,7 +255,13 @@ public class DraftingTabletGUI extends Screen {
             float[][][] errorBuf = new float[128][128][3];
             for (int y = 0; y < 128; y++) {
                 for (int x = 0; x < 128; x++) {
-                    int rgb = image.getRGB(x, y);
+                    int argb = image.getRGB(x, y);
+                    if (((argb >> 24) & 0xFF) < 1) {
+                        colors[y * 128 + x] = 0;
+                        continue;
+                    }
+
+                    int rgb = argb;
                     float r = ((rgb >> 16) & 0xFF) + errorBuf[x][y][0];
                     float g = ((rgb >> 8) & 0xFF) + errorBuf[x][y][1];
                     float b = (rgb & 0xFF) + errorBuf[x][y][2];

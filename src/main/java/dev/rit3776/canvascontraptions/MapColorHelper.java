@@ -16,7 +16,7 @@ public class MapColorHelper {
 
         for (int i = 0; i < 64; i++) {
             MapColor mc = MapColor.byId(i);
-            if (mc == MapColor.NONE && i > 0) continue;
+            if (mc == MapColor.NONE) continue;
             for (int shade = 0; shade < 4; shade++) {
                 int idx = i * 4 + shade;
                 int argb = 0xFF000000 | getVariant(mc.col, shade);
