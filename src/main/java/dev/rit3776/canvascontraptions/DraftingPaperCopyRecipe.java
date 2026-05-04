@@ -1,29 +1,28 @@
 package dev.rit3776.canvascontraptions;
 
-import net.minecraft.core.RegistryAccess;
-import net.minecraft.resources.ResourceLocation;
-import net.minecraft.world.inventory.CraftingContainer;
+import net.minecraft.core.HolderLookup;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.crafting.CraftingBookCategory;
+import net.minecraft.world.item.crafting.CraftingInput;
 import net.minecraft.world.item.crafting.CustomRecipe;
 import net.minecraft.world.item.crafting.RecipeSerializer;
 import net.minecraft.world.level.Level;
 
 public class DraftingPaperCopyRecipe extends CustomRecipe {
-    public DraftingPaperCopyRecipe(ResourceLocation id, CraftingBookCategory category) {
-        super(id, category);
+    public DraftingPaperCopyRecipe(CraftingBookCategory category) {
+        super(category);
     }
 
     @Override
-    public boolean matches(CraftingContainer container, Level level) {
+    public boolean matches(CraftingInput input, Level level) {
         int filledCount = 0;
         int blankCount = 0;
 
-        for (int i = 0; i < container.getContainerSize(); i++) {
-            ItemStack stack = container.getItem(i);
+        for (int i = 0; i < input.size(); i++) {
+            ItemStack stack = input.getItem(i);
             if (!stack.isEmpty()) {
                 if (stack.getItem() instanceof FilledDraftingPaperItem) {
-                    if (stack.hasTag() && stack.getTag().contains("MapIDs")) {
+                    if (stack.has(CCDataComponents.DRAFTING_LAYOUT)) {
                         filledCount++;
                     } else {
                         return false;
@@ -40,12 +39,12 @@ public class DraftingPaperCopyRecipe extends CustomRecipe {
     }
 
     @Override
-    public ItemStack assemble(CraftingContainer container, RegistryAccess registryAccess) {
+    public ItemStack assemble(CraftingInput input, HolderLookup.Provider registries) {
         int blankCount = 0;
         ItemStack filledSource = ItemStack.EMPTY;
 
-        for (int i = 0; i < container.getContainerSize(); i++) {
-            ItemStack stack = container.getItem(i);
+        for (int i = 0; i < input.size(); i++) {
+            ItemStack stack = input.getItem(i);
             if (!stack.isEmpty()) {
                 if (stack.getItem() instanceof FilledDraftingPaperItem) {
                     filledSource = stack;
@@ -57,8 +56,9 @@ public class DraftingPaperCopyRecipe extends CustomRecipe {
 
         if (!filledSource.isEmpty() && blankCount > 0) {
             ItemStack result = new ItemStack(CCItems.FILLED_DRAFTING_PAPER.get(), blankCount + 1);
-            if (filledSource.hasTag()) {
-                result.setTag(filledSource.getTag().copy());
+            CCDataComponents.DraftingLayout layout = filledSource.get(CCDataComponents.DRAFTING_LAYOUT);
+            if (layout != null) {
+                result.set(CCDataComponents.DRAFTING_LAYOUT, layout);
             }
             return result;
         }
@@ -68,7 +68,7 @@ public class DraftingPaperCopyRecipe extends CustomRecipe {
 
     @Override
     public boolean canCraftInDimensions(int width, int height) {
-        return width >= 3 && height >= 3 || width * height >= 2;
+        return width >= 2 && height >= 2 || width * height >= 2;
     }
 
     @Override

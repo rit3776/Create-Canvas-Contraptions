@@ -1,15 +1,18 @@
 package dev.rit3776.canvascontraptions;
 
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.world.level.ChunkPos;
+import dev.rit3776.canvascontraptions.network.S2CMapDataPacket;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.HolderLookup;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.protocol.game.ClientboundBlockEntityDataPacket;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockState;
-
-import dev.rit3776.canvascontraptions.network.CCNetwork;
-import dev.rit3776.canvascontraptions.network.S2CMapDataPacket;
+import net.minecraft.world.level.saveddata.maps.MapId;
 import net.minecraft.world.level.saveddata.maps.MapItemSavedData;
+import net.neoforged.neoforge.network.PacketDistributor;
 
 public class PaintedBlockEntity extends BlockEntity {
     private int mapId = -1;
@@ -26,9 +29,9 @@ public class PaintedBlockEntity extends BlockEntity {
             level.sendBlockUpdated(worldPosition, getBlockState(), getBlockState(), 3);
             
             // Sync map data to nearby players
-            MapItemSavedData data = level.getMapData("map_" + id);
+            MapItemSavedData data = level.getMapData(new MapId(id));
             if (data != null) {
-                CCNetwork.broadcastToAllInRange(new S2CMapDataPacket(id, data.colors), level, worldPosition);
+                PacketDistributor.sendToPlayersTrackingChunk((ServerLevel) level, new ChunkPos(worldPosition), new S2CMapDataPacket(id, data.colors));
             }
         }
     }
@@ -50,22 +53,22 @@ public class PaintedBlockEntity extends BlockEntity {
     }
 
     @Override
-    protected void saveAdditional(CompoundTag tag) {
-        super.saveAdditional(tag);
+    protected void saveAdditional(CompoundTag tag, HolderLookup.Provider registries) {
+        super.saveAdditional(tag, registries);
         tag.putInt("MapID", mapId);
         tag.putInt("Rotation", rotation);
     }
 
     @Override
-    public void load(CompoundTag tag) {
-        super.load(tag);
+    protected void loadAdditional(CompoundTag tag, HolderLookup.Provider registries) {
+        super.loadAdditional(tag, registries);
         this.mapId = tag.getInt("MapID");
         this.rotation = tag.getInt("Rotation");
     }
 
     @Override
-    public CompoundTag getUpdateTag() {
-        CompoundTag tag = super.getUpdateTag();
+    public CompoundTag getUpdateTag(HolderLookup.Provider registries) {
+        CompoundTag tag = super.getUpdateTag(registries);
         tag.putInt("MapID", mapId);
         tag.putInt("Rotation", rotation);
         return tag;

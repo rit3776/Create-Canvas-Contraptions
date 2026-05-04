@@ -8,14 +8,12 @@ import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.renderer.texture.DynamicTexture;
-import net.minecraft.nbt.CompoundTag;
-import net.minecraft.nbt.ListTag;
-import net.minecraft.nbt.Tag;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.util.Mth;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.item.ItemStack;
+import net.neoforged.neoforge.network.PacketDistributor;
 import org.lwjgl.PointerBuffer;
 import org.lwjgl.system.MemoryStack;
 import org.lwjgl.util.tinyfd.TinyFileDialogs;
@@ -27,12 +25,13 @@ import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 public class DraftingTabletGUI extends Screen {
     private final InteractionHand activeHand;
     private int columns = 1;
     private int rows = 1;
-    private int[] mapIds;
+    private List<Integer> mapIds;
     private int selectedIndexOnStack = 0;
     private String fileName = "";
 
@@ -40,11 +39,11 @@ public class DraftingTabletGUI extends Screen {
     private boolean dither = true;
     private boolean keepAspectRatio = true;
     private List<String> savedNames = new ArrayList<>();
+    private List<CCDataComponents.DraftingLayout> library = new ArrayList<>();
     private double scrollOffset = 0;
     private String statusMessage = "";
     private int statusTimer = 0;
 
-    // Import temporary state
     private BufferedImage selectedImage;
     private String tempFileName = "";
     private int tempRows = 1;
@@ -61,20 +60,27 @@ public class DraftingTabletGUI extends Screen {
     private void loadFromItem() {
         if (Minecraft.getInstance().player == null) return;
         ItemStack stack = Minecraft.getInstance().player.getItemInHand(activeHand);
-        if (stack.hasTag()) {
-            CompoundTag tag = stack.getTag();
-            this.mapIds = tag.contains("MapIDs") ? tag.getIntArray("MapIDs") : null;
-            this.selectedIndexOnStack = tag.getInt("SelectedIndex");
-            this.fileName = tag.getString("FileName");
-            this.columns = tag.getInt("Width");
-            this.rows = tag.getInt("Height");
-
-            this.savedNames.clear();
-            ListTag list = tag.getList("SavedImages", Tag.TAG_COMPOUND);
-            for (int i = 0; i < list.size(); i++) {
-                savedNames.add(list.getCompound(i).getString("FileName"));
-            }
+        CCDataComponents.DraftingLayout layout = stack.get(CCDataComponents.DRAFTING_LAYOUT);
+        if (layout != null) {
+            this.mapIds = layout.mapIds();
+            this.selectedIndexOnStack = layout.selectedIndex();
+            this.fileName = layout.fileName();
+            this.columns = layout.width();
+            this.rows = layout.height();
+        } else {
+            this.mapIds = null;
+            this.fileName = "";
         }
+
+        this.library = stack.getOrDefault(CCDataComponents.TABLET_LIBRARY, List.of());
+        this.savedNames.clear();
+        for (CCDataComponents.DraftingLayout l : library) {
+            savedNames.add(l.fileName());
+        }
+    }
+
+    public static void open(InteractionHand hand) {
+        Minecraft.getInstance().setScreen(new DraftingTabletGUI(Component.translatable("gui.canvascontraptions.drafting_tablet.title"), hand));
     }
 
     @Override
@@ -92,7 +98,6 @@ public class DraftingTabletGUI extends Screen {
         int bw = 100;
 
         if (selectedImage == null) {
-            // Management Sidebar
             this.addRenderableWidget(Button.builder(Component.translatable("gui.canvascontraptions.button.add_new"), b -> selectFile())
                     .bounds(bx, 40, bw, 20).build());
             this.addRenderableWidget(Button.builder(Component.translatable("gui.canvascontraptions.button.saved_list"), b -> {
@@ -110,7 +115,6 @@ public class DraftingTabletGUI extends Screen {
             this.addRenderableWidget(Button.builder(Component.translatable("gui.canvascontraptions.button.close"), b -> this.onClose())
                     .bounds(bx, 115, bw, 20).build());
         } else {
-            // Import Configuration Sidebar
             this.addRenderableWidget(Button.builder(Component.translatable("gui.canvascontraptions.button.cols_minus"), b -> {
                 tempCols = Math.max(1, tempCols - 1);
                 init();
@@ -201,7 +205,8 @@ public class DraftingTabletGUI extends Screen {
             }
         }
         previewTexture = new DynamicTexture(nativeImage);
-        previewLocation = Minecraft.getInstance().getTextureManager().register("canvascontraptions_tablet_preview", previewTexture);
+        previewLocation = ResourceLocation.fromNamespaceAndPath(CanvasContraptions.MODID, "tablet_preview");
+        Minecraft.getInstance().getTextureManager().register(previewLocation, previewTexture);
     }
 
     @Override
@@ -242,7 +247,7 @@ public class DraftingTabletGUI extends Screen {
             }
         }
 
-        CCNetwork.sendToServer(new C2SImageUploadPacket(slices, tempCols, tempRows, activeHand, tempFileName));
+        PacketDistributor.sendToServer(new C2SImageUploadPacket(slices, tempCols, tempRows, activeHand, tempFileName));
         this.selectedImage = null;
         this.statusMessage = Component.translatable("message.canvascontraptions.import_success").getString();
         this.statusTimer = 60;
@@ -266,13 +271,13 @@ public class DraftingTabletGUI extends Screen {
                     float g = ((rgb >> 8) & 0xFF) + errorBuf[x][y][1];
                     float b = (rgb & 0xFF) + errorBuf[x][y][2];
 
-                    byte idx = MapColorHelper.findNearestIndex((int)r, (int)g, (int)b);
+                    byte idx = MapColorHelper.getNearestMapColor((int)r, (int)g, (int)b);
                     colors[y * 128 + x] = idx;
 
-                    int actual = MapColorHelper.getRgbColor(idx);
-                    float er = r - ((actual >> 16) & 0xFF);
-                    float eg = g - ((actual >> 8) & 0xFF);
-                    float eb = b - (actual & 0xFF);
+                    Color actual = MapColorHelper.getColorFromMapByte(idx);
+                    float er = r - actual.getRed();
+                    float eg = g - actual.getGreen();
+                    float eb = b - actual.getBlue();
 
                     if (x + 1 < 128) diffuse(errorBuf, x + 1, y, er, eg, eb, 7 / 16f);
                     if (y + 1 < 128) {
@@ -285,7 +290,12 @@ public class DraftingTabletGUI extends Screen {
         } else {
             for (int y = 0; y < 128; y++) {
                 for (int x = 0; x < 128; x++) {
-                    colors[y * 128 + x] = MapColorHelper.findNearestIndex(image.getRGB(x, y));
+                    int argb = image.getRGB(x, y);
+                    if (((argb >> 24) & 0xFF) < 1) {
+                        colors[y * 128 + x] = 0;
+                    } else {
+                        colors[y * 128 + x] = MapColorHelper.getNearestMapColor((argb >> 16) & 0xFF, (argb >> 8) & 0xFF, argb & 0xFF);
+                    }
                 }
             }
         }
@@ -309,20 +319,24 @@ public class DraftingTabletGUI extends Screen {
             statusTimer = 60;
             return;
         }
-        CCNetwork.sendToServer(new C2STabletActionPacket(C2STabletActionPacket.Action.SAVE, -1, activeHand));
+        
+        ItemStack stack = Minecraft.getInstance().player.getItemInHand(activeHand);
+        CCDataComponents.DraftingLayout layout = stack.get(CCDataComponents.DRAFTING_LAYOUT);
+        
+        PacketDistributor.sendToServer(new C2STabletActionPacket(C2STabletActionPacket.Action.SAVE, -1, Optional.ofNullable(layout)));
         statusMessage = ChatFormatting.GREEN + Component.translatable("message.canvascontraptions.saved_to_library").getString();
         statusTimer = 60;
     }
 
     private void deleteFromLibrary(int index) {
-        CCNetwork.sendToServer(new C2STabletActionPacket(C2STabletActionPacket.Action.DELETE, index, activeHand));
+        PacketDistributor.sendToServer(new C2STabletActionPacket(C2STabletActionPacket.Action.DELETE, index, Optional.empty()));
         statusMessage = ChatFormatting.YELLOW + Component.translatable("message.canvascontraptions.deleted_from_library").getString();
         statusTimer = 60;
         init();
     }
 
     private void selectFromLibrary(int index) {
-        CCNetwork.sendToServer(new C2STabletActionPacket(C2STabletActionPacket.Action.SELECT, index, activeHand));
+        PacketDistributor.sendToServer(new C2STabletActionPacket(C2STabletActionPacket.Action.SELECT, index, Optional.empty()));
         this.showLibrary = false;
         statusMessage = Component.translatable("message.canvascontraptions.switched_to_saved_image").getString();
         statusTimer = 60;
@@ -330,12 +344,12 @@ public class DraftingTabletGUI extends Screen {
     }
 
     @Override
-    public boolean mouseScrolled(double mouseX, double mouseY, double delta) {
+    public boolean mouseScrolled(double mouseX, double mouseY, double scrollX, double scrollY) {
         if (showLibrary) {
-            scrollOffset = Mth.clamp(scrollOffset - delta * 15, 0, Math.max(0, (savedNames.size() - 5) * 15));
+            scrollOffset = Mth.clamp(scrollOffset - scrollY * 15, 0, Math.max(0, (savedNames.size() - 5) * 15));
             return true;
         }
-        return super.mouseScrolled(mouseX, mouseY, delta);
+        return super.mouseScrolled(mouseX, mouseY, scrollX, scrollY);
     }
 
     @Override
@@ -381,8 +395,8 @@ public class DraftingTabletGUI extends Screen {
                 int col = (int) ((mouseX - startX) / (gridW / (double)columns));
                 int row = (int) ((mouseY - startY) / (gridH / (double)rows));
                 int index = (int)row * columns + (int)col;
-                if (index >= 0 && index < mapIds.length) {
-                    CCNetwork.sendToServer(new C2SSelectTilePacket(index, activeHand));
+                if (index >= 0 && index < mapIds.size()) {
+                    PacketDistributor.sendToServer(new C2SSelectTilePacket(index));
                     this.onClose();
                     return true;
                 }
@@ -394,7 +408,7 @@ public class DraftingTabletGUI extends Screen {
     @Override
     public void render(GuiGraphics guiGraphics, int mouseX, int mouseY, float partialTicks) {
         loadFromItem();
-        this.renderBackground(guiGraphics);
+        this.renderBackground(guiGraphics, mouseX, mouseY, partialTicks);
         super.render(guiGraphics, mouseX, mouseY, partialTicks);
 
         guiGraphics.drawCenteredString(font, this.title, width / 2, 10, 0xFFFFFF);
@@ -422,7 +436,6 @@ public class DraftingTabletGUI extends Screen {
             guiGraphics.disableScissor();
             if (savedNames.isEmpty()) guiGraphics.drawString(font, Component.translatable("gui.canvascontraptions.library_empty"), lx, ly, 0x666666);
         } else if (selectedImage != null) {
-            // Draw import info in sidebar bottom
             guiGraphics.drawString(font, Component.translatable("gui.canvascontraptions.label.image", tempFileName), 10, height - 85, 0xAAAAAA);
             guiGraphics.drawString(font, Component.translatable("gui.canvascontraptions.label.size", selectedImage.getWidth() + "x" + selectedImage.getHeight()), 10, height - 74, 0x00FF00);
 
@@ -483,14 +496,14 @@ public class DraftingTabletGUI extends Screen {
             int startX = sidebarW + (areaW - gridW) / 2;
             int startY = areaY + (areaH - gridH) / 2;
 
-            for (int i = 0; i < mapIds.length; i++) {
+            for (int i = 0; i < mapIds.size(); i++) {
                 int r = i / columns;
                 int c = i % columns;
                 int tw = gridW / columns;
                 int th = gridH / rows;
                 int tx = startX + c * tw;
                 int ty = startY + r * th;
-                ResourceLocation loc = ClientMapCache.getTextureLocation(mapIds[i], Minecraft.getInstance().level);
+                ResourceLocation loc = ClientMapCache.getTextureLocation(mapIds.get(i), Minecraft.getInstance().level);
                 guiGraphics.blit(loc, tx, ty, 0, 0, tw, th, tw, th);
                 int borderColor = (i == selectedIndexOnStack) ? 0xFFFF0000 : 0xFF444444;
                 drawRectOutline(guiGraphics, tx, ty, tw, th, borderColor);

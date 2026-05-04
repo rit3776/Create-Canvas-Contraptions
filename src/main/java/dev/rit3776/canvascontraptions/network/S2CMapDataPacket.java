@@ -1,37 +1,30 @@
 package dev.rit3776.canvascontraptions.network;
 
+import dev.rit3776.canvascontraptions.CanvasContraptions;
 import dev.rit3776.canvascontraptions.ClientMapCache;
-import net.minecraft.client.Minecraft;
-import net.minecraft.network.FriendlyByteBuf;
-import net.minecraftforge.network.NetworkEvent;
+import net.minecraft.network.RegistryFriendlyByteBuf;
+import net.minecraft.network.codec.ByteBufCodecs;
+import net.minecraft.network.codec.StreamCodec;
+import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
+import net.neoforged.neoforge.network.handling.IPayloadContext;
 
-import java.util.function.Supplier;
+public record S2CMapDataPacket(int mapId, byte[] data) implements CustomPacketPayload {
+    public static final Type<S2CMapDataPacket> TYPE = new Type<>(CanvasContraptions.asResource("map_data"));
 
-public class S2CMapDataPacket {
-    private final int mapId;
-    private final byte[] colors;
+    public static final StreamCodec<RegistryFriendlyByteBuf, S2CMapDataPacket> STREAM_CODEC = StreamCodec.composite(
+            ByteBufCodecs.VAR_INT, S2CMapDataPacket::mapId,
+            ByteBufCodecs.BYTE_ARRAY, S2CMapDataPacket::data,
+            S2CMapDataPacket::new
+    );
 
-    public S2CMapDataPacket(int mapId, byte[] colors) {
-        this.mapId = mapId;
-        this.colors = colors;
+    @Override
+    public Type<? extends CustomPacketPayload> type() {
+        return TYPE;
     }
 
-    public static void encode(S2CMapDataPacket msg, FriendlyByteBuf buffer) {
-        buffer.writeInt(msg.mapId);
-        buffer.writeByteArray(msg.colors);
-    }
-
-    public static S2CMapDataPacket decode(FriendlyByteBuf buffer) {
-        return new S2CMapDataPacket(buffer.readInt(), buffer.readByteArray());
-    }
-
-    public static void handle(S2CMapDataPacket msg, Supplier<NetworkEvent.Context> ctx) {
-        ctx.get().enqueueWork(() -> {
-            dev.rit3776.canvascontraptions.CanvasContraptions.LOGGER.info("Received S2CMapDataPacket for map ID: " + msg.mapId);
-            if (Minecraft.getInstance().level != null) {
-                ClientMapCache.update(msg.mapId, msg.colors, Minecraft.getInstance().level);
-            }
+    public void handle(IPayloadContext context) {
+        context.enqueueWork(() -> {
+            ClientMapCache.updateMapData(mapId, data);
         });
-        ctx.get().setPacketHandled(true);
     }
 }

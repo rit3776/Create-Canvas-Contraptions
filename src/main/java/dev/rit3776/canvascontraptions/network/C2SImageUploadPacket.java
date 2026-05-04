@@ -1,96 +1,69 @@
 package dev.rit3776.canvascontraptions.network;
 
+import dev.rit3776.canvascontraptions.CanvasContraptions;
+import dev.rit3776.canvascontraptions.CCDataComponents;
 import dev.rit3776.canvascontraptions.CCItems;
 import dev.rit3776.canvascontraptions.DraftingTabletItem;
-import net.minecraft.nbt.CompoundTag;
-import net.minecraft.network.FriendlyByteBuf;
-import net.minecraft.server.level.ServerLevel;
+import dev.rit3776.canvascontraptions.ServerMapManager;
+import net.minecraft.network.RegistryFriendlyByteBuf;
+import net.minecraft.network.codec.ByteBufCodecs;
+import net.minecraft.network.codec.StreamCodec;
+import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.item.ItemStack;
-import net.minecraftforge.network.NetworkEvent;
+import net.neoforged.neoforge.network.PacketDistributor;
+import net.neoforged.neoforge.network.handling.IPayloadContext;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.function.Supplier;
 
-public class C2SImageUploadPacket {
-    public final List<byte[]> mapDatas;
-    public final int width;
-    public final int height;
-    public final InteractionHand hand;
-    public final String fileName;
+public record C2SImageUploadPacket(List<byte[]> mapDatas, int width, int height, InteractionHand hand, String fileName) implements CustomPacketPayload {
+    public static final Type<C2SImageUploadPacket> TYPE = new Type<>(CanvasContraptions.asResource("image_upload"));
 
-    public C2SImageUploadPacket(List<byte[]> mapDatas, int width, int height, InteractionHand hand, String fileName) {
-        this.mapDatas = mapDatas;
-        this.width = width;
-        this.height = height;
-        this.hand = hand;
-        this.fileName = fileName;
+    public static final StreamCodec<RegistryFriendlyByteBuf, C2SImageUploadPacket> STREAM_CODEC = StreamCodec.composite(
+            ByteBufCodecs.BYTE_ARRAY.apply(ByteBufCodecs.list()), C2SImageUploadPacket::mapDatas,
+            ByteBufCodecs.VAR_INT, C2SImageUploadPacket::width,
+            ByteBufCodecs.VAR_INT, C2SImageUploadPacket::height,
+            ByteBufCodecs.VAR_INT.map(i -> InteractionHand.values()[i], InteractionHand::ordinal), C2SImageUploadPacket::hand,
+            ByteBufCodecs.STRING_UTF8, C2SImageUploadPacket::fileName,
+            C2SImageUploadPacket::new
+    );
+
+    @Override
+    public Type<? extends CustomPacketPayload> type() {
+        return TYPE;
     }
 
-    public static void encode(C2SImageUploadPacket msg, FriendlyByteBuf buffer) {
-        buffer.writeInt(msg.mapDatas.size());
-        for (byte[] data : msg.mapDatas) {
-            buffer.writeByteArray(data);
-        }
-        buffer.writeInt(msg.width);
-        buffer.writeInt(msg.height);
-        buffer.writeEnum(msg.hand);
-        buffer.writeUtf(msg.fileName);
-    }
-
-    public static C2SImageUploadPacket decode(FriendlyByteBuf buffer) {
-        int size = buffer.readInt();
-        List<byte[]> datas = new ArrayList<>(size);
-        for (int i = 0; i < size; i++) {
-            datas.add(buffer.readByteArray());
-        }
-        return new C2SImageUploadPacket(datas, buffer.readInt(), buffer.readInt(), buffer.readEnum(InteractionHand.class), buffer.readUtf());
-    }
-
-    public static void handle(C2SImageUploadPacket msg, Supplier<NetworkEvent.Context> ctx) {
-        ctx.get().enqueueWork(() -> {
-            ServerPlayer player = ctx.get().getSender();
-            if (player == null) return;
-            ServerLevel level = player.serverLevel();
-
-            int[] ids = new int[msg.mapDatas.size()];
-            for (int i = 0; i < msg.mapDatas.size(); i++) {
-                byte[] pixels = msg.mapDatas.get(i);
-                int mapId = dev.rit3776.canvascontraptions.ServerMapManager.getOrCreateMapId(level, pixels);
-                ids[i] = mapId;
-                CCNetwork.sendToClient(new S2CMapDataPacket(mapId, pixels), player);
+    public void handle(IPayloadContext context) {
+        context.enqueueWork(() -> {
+            ServerPlayer player = (ServerPlayer) context.player();
+            
+            List<Integer> ids = new ArrayList<>();
+            for (byte[] pixels : mapDatas) {
+                int mapId = ServerMapManager.getOrCreateMapId(player.serverLevel(), pixels);
+                ids.add(mapId);
+                PacketDistributor.sendToPlayer(player, new S2CMapDataPacket(mapId, pixels));
             }
 
-            ItemStack heldStack = player.getItemInHand(msg.hand);
+            ItemStack heldStack = player.getItemInHand(hand);
+            CCDataComponents.DraftingLayout layout = new CCDataComponents.DraftingLayout(ids, width, height, fileName, 0);
+            
             if (heldStack.getItem() instanceof DraftingTabletItem) {
-                CompoundTag tag = heldStack.getOrCreateTag();
-                tag.putIntArray("MapIDs", ids);
-                tag.putInt("Width", msg.width);
-                tag.putInt("Height", msg.height);
-                tag.putInt("SelectedIndex", 0);
-                tag.putString("FileName", msg.fileName);
+                heldStack.set(CCDataComponents.DRAFTING_LAYOUT, layout);
             } else {
                 ItemStack result = new ItemStack(CCItems.FILLED_DRAFTING_PAPER.get());
-                CompoundTag tag = result.getOrCreateTag();
-                tag.putIntArray("MapIDs", ids);
-                tag.putInt("Width", msg.width);
-                tag.putInt("Height", msg.height);
-                tag.putInt("SelectedIndex", 0);
-                tag.putString("FileName", msg.fileName);
+                result.set(CCDataComponents.DRAFTING_LAYOUT, layout);
 
-                // Correctly handle stack shrinking to only consume one empty paper
                 if (heldStack.getCount() > 1) {
                     heldStack.shrink(1);
                     if (!player.getInventory().add(result)) {
                         player.drop(result, false);
                     }
                 } else {
-                    player.setItemInHand(msg.hand, result);
+                    player.setItemInHand(hand, result);
                 }
             }
         });
-        ctx.get().setPacketHandled(true);
     }
 }

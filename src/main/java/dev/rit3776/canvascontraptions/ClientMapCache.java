@@ -1,12 +1,12 @@
 package dev.rit3776.canvascontraptions;
 
 import dev.rit3776.canvascontraptions.network.C2SRequestMapDataPacket;
-import dev.rit3776.canvascontraptions.network.CCNetwork;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.texture.DynamicTexture;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.saveddata.maps.MapItemSavedData;
+import net.neoforged.neoforge.network.PacketDistributor;
 
 import java.util.Map;
 import java.util.Arrays;
@@ -21,11 +21,9 @@ public class ClientMapCache {
 
     private static final Map<Integer, DynamicTexture> textureCache = new ConcurrentHashMap<>();
     private static final Map<Integer, ResourceLocation> textureLocations = new ConcurrentHashMap<>();
-    // Simple color cache to avoid concurrent access to MapItemSavedData.colors
     private static final Map<Integer, byte[]> colorCache = new ConcurrentHashMap<>();
     private static final int MAX_TEXTURES = 256;
     private static final Map<Integer, ResourceLocation> textureLru = Collections.synchronizedMap(new LinkedHashMap<>(16, 0.75f, true));
-    // Cached flag indicating whether a map contains any non-zero pixels (avoids per-frame scans)
     private static final Map<Integer, Boolean> hasDataMap = new ConcurrentHashMap<>();
 
     public static MapItemSavedData getOrCreate(int mapId, Level level) {
@@ -34,7 +32,6 @@ public class ClientMapCache {
             hasDataMap.put(id, false);
             return MapItemSavedData.createForClient((byte) 3, false, level.dimension());
         });
-        // Ensure a color buffer exists for this map to avoid concurrent access to the internal array
         colorCache.computeIfAbsent(mapId, id -> new byte[data.colors.length]);
         return data;
     }
@@ -46,7 +43,6 @@ public class ClientMapCache {
     public static ResourceLocation getTextureLocation(int mapId, Level level) {
         getOrCreate(mapId, level);
 
-        // If already registered, bump LRU and return
         ResourceLocation existing = textureLocations.get(mapId);
         if (existing != null) {
             textureLru.put(mapId, existing);
@@ -54,7 +50,6 @@ public class ClientMapCache {
         }
 
         synchronized (textureLru) {
-            // Evict least-recently-used texture if over the limit
             if (textureLru.size() >= MAX_TEXTURES) {
                 Iterator<Integer> it = textureLru.keySet().iterator();
                 if (it.hasNext()) {
@@ -71,13 +66,13 @@ public class ClientMapCache {
             DynamicTexture texture = new DynamicTexture(128, 128, true);
             textureCache.put(mapId, texture);
             updateTexture(mapId);
-            ResourceLocation loc = Minecraft.getInstance().getTextureManager().register("canvas_map_" + mapId, texture);
+            ResourceLocation loc = ResourceLocation.fromNamespaceAndPath(CanvasContraptions.MODID, "canvas_map_" + mapId);
+            Minecraft.getInstance().getTextureManager().register(loc, texture);
             textureLocations.put(mapId, loc);
             textureLru.put(mapId, loc);
             return loc;
         }
     }
-
 
     private static void updateTexture(int mapId) {
         DynamicTexture texture = textureCache.get(mapId);
@@ -91,8 +86,10 @@ public class ClientMapCache {
             colorCache.put(mapId, colors);
         }
 
+        if (texture.getPixels() == null) return;
+
         for (int i = 0; i < 128 * 128 && i < colors.length; i++) {
-            int color = MapColorHelper.getRgbColor(colors[i]);
+            int color = MapColorHelper.getColorFromMapByte(colors[i]).getRGB();
             texture.getPixels().setPixelRGBA(i % 128, i / 128, colorToAbgr(color));
         }
         texture.upload();
@@ -106,7 +103,10 @@ public class ClientMapCache {
         return (a << 24) | (b << 16) | (g << 8) | r;
     }
 
-    public static void update(int mapId, byte[] colors, Level level) {
+    public static void updateMapData(int mapId, byte[] colors) {
+        Level level = Minecraft.getInstance().level;
+        if (level == null) return;
+
         MapItemSavedData data = getOrCreate(mapId, level);
         if (data.colors.length == colors.length) {
             byte[] copy = Arrays.copyOf(colors, colors.length);
@@ -120,7 +120,7 @@ public class ClientMapCache {
             hasDataMap.put(mapId, any);
 
             Minecraft.getInstance().execute(() -> {
-                MapItemSavedData d = getOrCreate(mapId, level);
+                MapItemSavedData d = mapCache.get(mapId);
                 if (d != null && d.colors.length == copy.length) {
                     System.arraycopy(copy, 0, d.colors, 0, copy.length);
                 }
@@ -129,7 +129,7 @@ public class ClientMapCache {
         }
     }
 
-    public static void reset() {
+    public static void clear() {
         int count = textureLocations.size();
         if (count > 0) {
             CanvasContraptions.LOGGER.info("Clearing ClientMapCache and releasing {} textures from VRAM", count);
@@ -152,7 +152,7 @@ public class ClientMapCache {
         long now = System.currentTimeMillis();
         if (now - lastRequestTime.getOrDefault(mapId, 0L) > 10000) {
             lastRequestTime.put(mapId, now);
-            CCNetwork.sendToServer(new C2SRequestMapDataPacket(mapId));
+            PacketDistributor.sendToServer(new C2SRequestMapDataPacket(mapId));
         }
     }
 }

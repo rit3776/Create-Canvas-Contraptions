@@ -11,11 +11,17 @@ import net.minecraft.client.renderer.LevelRenderer;
 import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
+import net.minecraft.world.level.saveddata.maps.MapId;
 import net.minecraft.world.level.saveddata.maps.MapItemSavedData;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.api.distmarker.OnlyIn;
+import net.neoforged.api.distmarker.Dist;
+import net.neoforged.api.distmarker.OnlyIn;
 
 public class PaintedMovementBehaviour implements MovementBehaviour {
+
+    @Override
+    public boolean isActive(MovementContext context) {
+        return true;
+    }
 
     @Override
     @OnlyIn(Dist.CLIENT)
@@ -23,24 +29,25 @@ public class PaintedMovementBehaviour implements MovementBehaviour {
             ContraptionMatrices matrices, MultiBufferSource buffer) {
         if (!context.world.isClientSide)
             return;
-
         if (context.blockEntityData == null)
             return;
 
-        int mapId = context.blockEntityData.getInt("MapID");
-        if (mapId < 0)
+        int id = context.blockEntityData.getInt("MapID");
+        if (id < 0)
             return;
 
-        MapItemSavedData data = ClientMapCache.getOrCreate(mapId, context.world);
+        MapId mapId = new MapId(id);
+        MapItemSavedData data = ClientMapCache.getOrCreate(id, context.world);
+        if (!ClientMapCache.hasData(id))
+            return;
 
         Direction facing = context.state.getValue(PaintedBlock.FACING);
-
-        if (!ClientMapCache.hasData(mapId))
-            return;
+        int rotation = context.blockEntityData.getInt("Rotation");
 
         PoseStack poseStack = matrices.getModel();
         poseStack.pushPose();
 
+        // IMPORTANT: Translate to the block's local position in the contraption
         poseStack.translate(context.localPos.getX(), context.localPos.getY(), context.localPos.getZ());
 
         poseStack.translate(0.5, 0.5, 0.5);
@@ -52,12 +59,12 @@ public class PaintedMovementBehaviour implements MovementBehaviour {
             case UP -> poseStack.mulPose(Axis.XP.rotationDegrees(-90));
             case DOWN -> poseStack.mulPose(Axis.XP.rotationDegrees(90));
             default -> {
-            }
+            } // SOUTH
         }
 
-        int rotation = context.blockEntityData.getInt("Rotation");
         poseStack.mulPose(Axis.ZP.rotationDegrees(rotation * 90.0f));
 
+        // Positioning for the map face
         poseStack.translate(-0.5, 0.5, -0.485);
         poseStack.scale(1f / 128f, -1f / 128f, 1f);
 
@@ -66,6 +73,7 @@ public class PaintedMovementBehaviour implements MovementBehaviour {
                 : context.localPos;
         int light = LevelRenderer.getLightColor(context.world, lightPos);
 
+        // Use vanilla MapRenderer for stability and compatibility
         Minecraft.getInstance().gameRenderer.getMapRenderer()
                 .render(poseStack, buffer, mapId, data, false, light);
 

@@ -1,0 +1,19 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "pattern": [
+    "SYS",
+    "GRG",
+    "SMS"
+  ],
+  "key": {
+    "S": { "item": "create:sturdy_sheet" },
+    "Y": { "item": "minecraft:glass_pane" },
+    "G": { "item": "create:golden_sheet" },
+    "R": { "item": "minecraft:redstone" },
+    "M": { "item": "create:precision_mechanism" }
+  },
+  "result": {
+    "id": "canvascontraptions:drafting_tablet",
+    "count": 1
+  }
+}

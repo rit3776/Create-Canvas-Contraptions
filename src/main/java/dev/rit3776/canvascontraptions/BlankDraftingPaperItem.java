@@ -9,15 +9,15 @@ import net.minecraft.world.level.Level;
 
 public class BlankDraftingPaperItem extends Item {
     public BlankDraftingPaperItem(Properties properties) {
-        super(properties.stacksTo(64));
+        super(properties);
     }
 
     @Override
     public InteractionResultHolder<ItemStack> use(Level level, Player player, InteractionHand hand) {
+        ItemStack stack = player.getItemInHand(hand);
         if (level.isClientSide) {
-            // Open GUI on client
-            DraftingGUI.openBlank(hand);
+            DraftingGUI.open();
         }
-        return InteractionResultHolder.sidedSuccess(player.getItemInHand(hand), level.isClientSide);
+        return InteractionResultHolder.sidedSuccess(stack, level.isClientSide());
     }
 }

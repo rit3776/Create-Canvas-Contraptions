@@ -3,7 +3,6 @@ package dev.rit3776.canvascontraptions;
 import com.mojang.blaze3d.platform.NativeImage;
 import dev.rit3776.canvascontraptions.network.C2SImageUploadPacket;
 import dev.rit3776.canvascontraptions.network.C2SSelectTilePacket;
-import dev.rit3776.canvascontraptions.network.CCNetwork;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.Button;
@@ -13,6 +12,7 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.item.ItemStack;
+import net.neoforged.neoforge.network.PacketDistributor;
 import org.lwjgl.PointerBuffer;
 import org.lwjgl.system.MemoryStack;
 import org.lwjgl.util.tinyfd.TinyFileDialogs;
@@ -38,7 +38,7 @@ public class DraftingGUI extends Screen {
 
     private final InteractionHand activeHand;
     private final Mode mode;
-    private int[] mapIds;
+    private List<Integer> mapIds;
     private int selectedIndexOnStack = 0;
 
     private enum Mode {
@@ -51,20 +51,22 @@ public class DraftingGUI extends Screen {
         this.mode = mode;
         if (Minecraft.getInstance().player != null) {
             ItemStack stack = Minecraft.getInstance().player.getItemInHand(hand);
-            if (stack.hasTag()) {
-                this.mapIds = stack.getTag().getIntArray("MapIDs");
-                this.selectedIndexOnStack = stack.getTag().getInt("SelectedIndex");
+            CCDataComponents.DraftingLayout layout = stack.get(CCDataComponents.DRAFTING_LAYOUT);
+            if (layout != null) {
+                this.mapIds = layout.mapIds();
+                this.selectedIndexOnStack = layout.selectedIndex();
                 
                 if (mode == Mode.FILLED) {
-                    if (stack.getTag().contains("Width")) {
-                        this.columns = stack.getTag().getInt("Width");
-                    }
-                    if (stack.getTag().contains("Height")) {
-                        this.rows = stack.getTag().getInt("Height");
-                    }
+                    this.columns = layout.width();
+                    this.rows = layout.height();
                 }
             }
         }
+    }
+
+    public static void open() {
+        InteractionHand hand = Minecraft.getInstance().player.getMainHandItem().getItem() instanceof BlankDraftingPaperItem ? InteractionHand.MAIN_HAND : InteractionHand.OFF_HAND;
+        openBlank(hand);
     }
 
     public static void openBlank(InteractionHand hand) {
@@ -95,14 +97,12 @@ public class DraftingGUI extends Screen {
 
         if (mode == Mode.BLANK || mode == Mode.TABLET) {
             if (selectedImage == null) {
-                // Management Mode
                 this.addRenderableWidget(Button
                         .builder(Component.translatable("gui.canvascontraptions.button.select_file"), b -> selectFile()).bounds(bx, 40, bw, 20)
                         .build());
                 this.addRenderableWidget(Button.builder(Component.translatable("gui.canvascontraptions.button.close"), b -> this.onClose())
                         .bounds(bx, 65, bw, 20).build());
             } else {
-                // Import Configuration Mode
                 this.addRenderableWidget(Button.builder(Component.translatable("gui.canvascontraptions.button.cols_minus"), b -> {
                     columns = Math.max(1, columns - 1);
                     init();
@@ -191,7 +191,8 @@ public class DraftingGUI extends Screen {
             }
         }
         previewTexture = new DynamicTexture(nativeImage);
-        previewLocation = Minecraft.getInstance().getTextureManager().register("canvascontraptions_preview", previewTexture);
+        previewLocation = ResourceLocation.fromNamespaceAndPath(CanvasContraptions.MODID, "preview");
+        Minecraft.getInstance().getTextureManager().register(previewLocation, previewTexture);
     }
 
     @Override
@@ -232,7 +233,7 @@ public class DraftingGUI extends Screen {
             }
         }
 
-        CCNetwork.sendToServer(new C2SImageUploadPacket(slices, columns, rows, activeHand, selectedFileName));
+        PacketDistributor.sendToServer(new C2SImageUploadPacket(slices, columns, rows, activeHand, selectedFileName));
         this.onClose();
     }
 
@@ -253,13 +254,13 @@ public class DraftingGUI extends Screen {
                     float g = ((rgb >> 8) & 0xFF) + errorBuf[x][y][1];
                     float b = (rgb & 0xFF) + errorBuf[x][y][2];
 
-                    byte idx = MapColorHelper.findNearestIndex((int)r, (int)g, (int)b);
+                    byte idx = MapColorHelper.getNearestMapColor((int)r, (int)g, (int)b);
                     colors[y * 128 + x] = idx;
 
-                    int actual = MapColorHelper.getRgbColor(idx);
-                    float er = r - ((actual >> 16) & 0xFF);
-                    float eg = g - ((actual >> 8) & 0xFF);
-                    float eb = b - (actual & 0xFF);
+                    Color actual = MapColorHelper.getColorFromMapByte(idx);
+                    float er = r - actual.getRed();
+                    float eg = g - actual.getGreen();
+                    float eb = b - actual.getBlue();
 
                     if (x + 1 < 128) diffuse(errorBuf, x + 1, y, er, eg, eb, 7 / 16f);
                     if (y + 1 < 128) {
@@ -272,7 +273,12 @@ public class DraftingGUI extends Screen {
         } else {
             for (int y = 0; y < 128; y++) {
                 for (int x = 0; x < 128; x++) {
-                    colors[y * 128 + x] = MapColorHelper.findNearestIndex(image.getRGB(x, y));
+                    int argb = image.getRGB(x, y);
+                    if (((argb >> 24) & 0xFF) < 1) {
+                        colors[y * 128 + x] = 0;
+                    } else {
+                        colors[y * 128 + x] = MapColorHelper.getNearestMapColor((argb >> 16) & 0xFF, (argb >> 8) & 0xFF, argb & 0xFF);
+                    }
                 }
             }
         }
@@ -300,8 +306,8 @@ public class DraftingGUI extends Screen {
                 int row = (int) ((mouseY - startY) / tileSize);
                 if (col >= 0 && col < columns && row >= 0 && row < rows) {
                     int index = row * columns + col;
-                    if (index >= 0 && index < mapIds.length) {
-                        CCNetwork.sendToServer(new C2SSelectTilePacket(index, activeHand));
+                    if (index >= 0 && index < mapIds.size()) {
+                        PacketDistributor.sendToServer(new C2SSelectTilePacket(index));
                         this.onClose();
                         return true;
                     }
@@ -313,7 +319,6 @@ public class DraftingGUI extends Screen {
 
     @Override
     public void render(GuiGraphics guiGraphics, int mouseX, int mouseY, float partialTicks) {
-        this.renderBackground(guiGraphics);
         super.render(guiGraphics, mouseX, mouseY, partialTicks);
 
         guiGraphics.drawCenteredString(font, this.title, width / 2, 10, 0xFFFFFF);
@@ -337,7 +342,6 @@ public class DraftingGUI extends Screen {
             int startX = sidebarW + (areaW - gridW) / 2;
             int startY = areaY + (areaH - gridH) / 2;
 
-            // Draw grid outline and background
             guiGraphics.fill(startX, startY, startX + gridW, startY + gridH, 0xFF111111);
             drawRectOutline(guiGraphics, startX, startY, gridW, gridH, 0xFFFFFFFF);
             
@@ -360,7 +364,6 @@ public class DraftingGUI extends Screen {
                 }
             }
 
-            // Draw grid lines
             for (int i = 1; i < columns; i++) {
                 int lx = startX + i * gridW / columns;
                 guiGraphics.fill(lx, startY, lx + 1, startY + gridH, 0x80FFFFFF);
@@ -382,12 +385,12 @@ public class DraftingGUI extends Screen {
             int startX = width / 2 - gridWidth / 2;
             int startY = height / 2 - gridHeight / 2;
 
-            for (int i = 0; i < mapIds.length; i++) {
+            for (int i = 0; i < mapIds.size(); i++) {
                 int r = i / columns;
                 int c = i % columns;
                 int tx = startX + c * tileSize;
                 int ty = startY + r * tileSize;
-                ResourceLocation loc = ClientMapCache.getTextureLocation(mapIds[i], Minecraft.getInstance().level);
+                ResourceLocation loc = ClientMapCache.getTextureLocation(mapIds.get(i), Minecraft.getInstance().level);
                 guiGraphics.blit(loc, tx, ty, 0, 0, tileSize, tileSize, tileSize, tileSize);
                 int borderColor = (i == selectedIndexOnStack) ? 0xFFFF0000 : 0xFF444444;
                 drawRectOutline(guiGraphics, tx, ty, tileSize, tileSize, borderColor);

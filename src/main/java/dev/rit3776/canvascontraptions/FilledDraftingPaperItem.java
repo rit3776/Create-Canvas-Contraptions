@@ -3,7 +3,6 @@ package dev.rit3776.canvascontraptions;
 import net.minecraft.ChatFormatting;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
-import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
@@ -22,7 +21,7 @@ import java.util.List;
 
 public class FilledDraftingPaperItem extends Item {
     public FilledDraftingPaperItem(Properties properties) {
-        super(properties.stacksTo(64));
+        super(properties);
     }
 
     @Override
@@ -32,14 +31,14 @@ public class FilledDraftingPaperItem extends Item {
         if (player == null) return InteractionResult.PASS;
 
         ItemStack stack = context.getItemInHand();
-        CompoundTag tag = stack.getOrCreateTag();
-        if (!tag.contains("MapIDs")) return InteractionResult.FAIL;
+        CCDataComponents.DraftingLayout layout = stack.get(CCDataComponents.DRAFTING_LAYOUT);
+        if (layout == null) return InteractionResult.FAIL;
 
-        int selectedIndex = tag.getInt("SelectedIndex");
-        int[] ids = tag.getIntArray("MapIDs");
-        if (selectedIndex < 0 || selectedIndex >= ids.length) return InteractionResult.FAIL;
+        int selectedIndex = layout.selectedIndex();
+        List<Integer> ids = layout.mapIds();
+        if (selectedIndex < 0 || selectedIndex >= ids.size()) return InteractionResult.FAIL;
 
-        int mapId = ids[selectedIndex];
+        int mapId = ids.get(selectedIndex);
 
         BlockPos pos = context.getClickedPos();
         Direction face = context.getClickedFace();
@@ -101,32 +100,25 @@ public class FilledDraftingPaperItem extends Item {
     @Override
     public InteractionResultHolder<ItemStack> use(Level level, Player player, InteractionHand hand) {
         if (level.isClientSide) {
-            // Open tile selection GUI
             DraftingGUI.openFilled(hand);
         }
         return InteractionResultHolder.sidedSuccess(player.getItemInHand(hand), level.isClientSide);
     }
 
     @Override
-    public void appendHoverText(ItemStack stack, @Nullable Level level, List<Component> tooltip, TooltipFlag flag) {
-        CompoundTag tag = stack.getTag();
-        if (tag != null) {
-            if (tag.contains("FileName")) {
-                tooltip.add(Component.translatable("tooltip.canvascontraptions.file")
-                        .append(Component.literal(tag.getString("FileName")).withStyle(ChatFormatting.BLUE)));
-            }
-            if (tag.contains("MapIDs")) {
-                int[] ids = tag.getIntArray("MapIDs");
-                int width = tag.getInt("Width");
-                int height = tag.getInt("Height");
-                int index = tag.getInt("SelectedIndex");
-                tooltip.add(Component.translatable("tooltip.canvascontraptions.layout")
-                        .append(Component.literal(width + "x" + height).withStyle(ChatFormatting.GOLD)));
-                tooltip.add(Component.translatable("tooltip.canvascontraptions.selected_tile")
-                        .append(Component.literal(String.valueOf(index)).withStyle(ChatFormatting.YELLOW))
-                        .append(Component.literal(" / " + (ids.length - 1)).withStyle(ChatFormatting.DARK_GRAY)));
-            }
+    public void appendHoverText(ItemStack stack, TooltipContext context, List<Component> tooltip, TooltipFlag flag) {
+        CCDataComponents.DraftingLayout layout = stack.get(CCDataComponents.DRAFTING_LAYOUT);
+        if (layout != null) {
+            tooltip.add(Component.translatable("tooltip.canvascontraptions.file")
+                    .append(Component.literal(layout.fileName()).withStyle(ChatFormatting.BLUE)));
+            
+            tooltip.add(Component.translatable("tooltip.canvascontraptions.layout")
+                    .append(Component.literal(layout.width() + "x" + layout.height()).withStyle(ChatFormatting.GOLD)));
+            
+            tooltip.add(Component.translatable("tooltip.canvascontraptions.selected_tile")
+                    .append(Component.literal(String.valueOf(layout.selectedIndex())).withStyle(ChatFormatting.YELLOW))
+                    .append(Component.literal(" / " + (layout.mapIds().size() - 1)).withStyle(ChatFormatting.DARK_GRAY)));
         }
-        super.appendHoverText(stack, level, tooltip, flag);
+        super.appendHoverText(stack, context, tooltip, flag);
     }
 }

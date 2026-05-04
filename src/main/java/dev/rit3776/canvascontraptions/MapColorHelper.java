@@ -2,137 +2,126 @@ package dev.rit3776.canvascontraptions;
 
 import net.minecraft.world.level.material.MapColor;
 
+import java.awt.Color;
+import java.util.ArrayList;
+import java.util.List;
+
 public class MapColorHelper {
-    private static byte[] lut = null;
+    private static final int LUT_SIZE = 32;
+    private static final byte[] COLOR_LUT = new byte[LUT_SIZE * LUT_SIZE * LUT_SIZE];
+    private static boolean lutInitialized = false;
 
-    private static void initLut() {
-        if (lut != null) return;
-        lut = new byte[32 * 32 * 32];
-
-        // Cache all available map colors in Lab space
-        int colorCount = 64 * 4;
-        float[][] mapColorLabs = new float[colorCount][3];
-        boolean[] valid = new boolean[colorCount];
-
-        for (int i = 0; i < 64; i++) {
-            MapColor mc = MapColor.byId(i);
-            if (mc == MapColor.NONE) continue;
-            for (int shade = 0; shade < 4; shade++) {
-                int idx = i * 4 + shade;
-                int argb = 0xFF000000 | getVariant(mc.col, shade);
-                mapColorLabs[idx] = rgbToLab(argb);
-                valid[idx] = true;
-            }
+    public static byte getNearestMapColor(int r, int g, int b) {
+        if (!lutInitialized) {
+            initLUT();
         }
+        r = Math.clamp(r, 0, 255);
+        g = Math.clamp(g, 0, 255);
+        b = Math.clamp(b, 0, 255);
+        int ir = (r * (LUT_SIZE - 1)) / 255;
+        int ig = (g * (LUT_SIZE - 1)) / 255;
+        int ib = (b * (LUT_SIZE - 1)) / 255;
+        return COLOR_LUT[ir * LUT_SIZE * LUT_SIZE + ig * LUT_SIZE + ib];
+    }
 
-        // Fill 3D-LUT
-        for (int r = 0; r < 32; r++) {
-            for (int g = 0; g < 32; g++) {
-                for (int b = 0; b < 32; b++) {
-                    float[] targetLab = rgbToLab(0xFF000000 | (r << 3 | 4) << 16 | (g << 3 | 4) << 8 | (b << 3 | 4));
-                    
-                    float bestDist = Float.MAX_VALUE;
-                    byte bestIdx = 0;
+    private static int fixColor(int val) {
+        // Minecraft 1.21.1's calculateRGBColor returns colors in a format where R and B are swapped compared to standard ARGB
+        int a = (val >> 24) & 0xFF;
+        int b = (val >> 16) & 0xFF; // This is actually Blue in the returned value
+        int g = (val >> 8) & 0xFF;
+        int r = val & 0xFF;         // This is actually Red in the returned value
+        return (a << 24) | (r << 16) | (g << 8) | b;
+    }
 
-                    for (int i = 0; i < colorCount; i++) {
-                        if (!valid[i]) continue;
-                        float dist = labDistanceSq(targetLab, mapColorLabs[i]);
-                        if (dist < bestDist) {
-                            bestDist = dist;
-                            bestIdx = (byte) i;
-                        }
-                    }
-                    lut[r * 1024 + g * 32 + b] = bestIdx;
+    private static synchronized void initLUT() {
+        if (lutInitialized) return;
+
+        List<MapColorData> mapColors = new ArrayList<>();
+        for (int i = 0; i < 64; i++) {
+            MapColor mapColor = MapColor.byId(i);
+            if (mapColor != MapColor.NONE) {
+                for (int j = 0; j < 4; j++) {
+                    if (i == 0 && j == 0) continue; // Skip transparency
+                    int rgb = fixColor(mapColor.calculateRGBColor(MapColor.Brightness.values()[j]));
+                    mapColors.add(new MapColorData((byte) (i * 4 + j), new Color(rgb)));
                 }
             }
         }
+
+        for (int r = 0; r < LUT_SIZE; r++) {
+            for (int g = 0; g < LUT_SIZE; g++) {
+                for (int b = 0; b < LUT_SIZE; b++) {
+                    int cr = (r * 255) / (LUT_SIZE - 1);
+                    int cg = (g * 255) / (LUT_SIZE - 1);
+                    int cb = (b * 255) / (LUT_SIZE - 1);
+                    COLOR_LUT[r * LUT_SIZE * LUT_SIZE + g * LUT_SIZE + b] = findNearest(cr, cg, cb, mapColors);
+                }
+            }
+        }
+        lutInitialized = true;
     }
 
-    public static byte findNearestIndex(int argb) {
-        int a = (argb >> 24) & 0xFF;
-        if (a < 1) return 0;
-        
-        initLut();
-        int r = (argb >> 16) & 0xFF;
-        int g = (argb >> 8) & 0xFF;
-        int b = argb & 0xFF;
-        
-        return lut[(r >> 3) * 1024 + (g >> 3) * 32 + (b >> 3)];
+    private static byte findNearest(int r, int g, int b, List<MapColorData> mapColors) {
+        double minDiff = Double.MAX_VALUE;
+        byte bestId = 0;
+
+        double[] lab1 = rgbToLab(r, g, b);
+
+        for (MapColorData data : mapColors) {
+            double[] lab2 = rgbToLab(data.color.getRed(), data.color.getGreen(), data.color.getBlue());
+            double diff = deltaE(lab1, lab2);
+            if (diff < minDiff) {
+                minDiff = diff;
+                bestId = data.id;
+            }
+        }
+        return bestId;
     }
 
-    // Direct RGB access for dithering without bit shifting if needed
-    public static byte findNearestIndex(int r, int g, int b) {
-        initLut();
-        r = Math.max(0, Math.min(255, r));
-        g = Math.max(0, Math.min(255, g));
-        b = Math.max(0, Math.min(255, b));
-        return lut[(r >> 3) * 1024 + (g >> 3) * 32 + (b >> 3)];
-    }
+    private record MapColorData(byte id, Color color) {}
 
-    private static float labDistanceSq(float[] lab1, float[] lab2) {
-        float dl = lab1[0] - lab2[0];
-        float da = lab1[1] - lab2[1];
-        float db = lab1[2] - lab2[2];
-        return dl * dl + da * da + db * db;
-    }
+    // LAB color space conversion and DeltaE for better color matching
+    private static double[] rgbToLab(int r, int g, int b) {
+        double lr = pivotRgb(r / 255.0);
+        double lg = pivotRgb(g / 255.0);
+        double lb = pivotRgb(b / 255.0);
 
-    private static float[] rgbToLab(int argb) {
-        float r = ((argb >> 16) & 0xFF) / 255.0f;
-        float g = ((argb >> 8) & 0xFF) / 255.0f;
-        float b = (argb & 0xFF) / 255.0f;
+        double x = lr * 0.4124 + lg * 0.3576 + lb * 0.1805;
+        double y = lr * 0.2126 + lg * 0.7152 + lb * 0.0722;
+        double z = lr * 0.0193 + lg * 0.1192 + lb * 0.9505;
 
-        // Gamma correction (sRGB inverse)
-        r = (r > 0.04045f) ? (float) Math.pow((r + 0.055f) / 1.055f, 2.4) : r / 12.92f;
-        g = (g > 0.04045f) ? (float) Math.pow((g + 0.055f) / 1.055f, 2.4) : g / 12.92f;
-        b = (b > 0.04045f) ? (float) Math.pow((b + 0.055f) / 1.055f, 2.4) : b / 12.92f;
+        // D65 illuminant
+        x /= 0.95047;
+        y /= 1.00000;
+        z /= 1.08883;
 
-        // Linear RGB to XYZ (D65)
-        float x = r * 0.4124f + g * 0.3576f + b * 0.1805f;
-        float y = r * 0.2126f + g * 0.7152f + b * 0.0722f;
-        float z = r * 0.0193f + g * 0.1192f + b * 0.9505f;
+        x = pivotXyz(x);
+        y = pivotXyz(y);
+        z = pivotXyz(z);
 
-        // XYZ to Lab
-        x /= 0.95047f;
-        y /= 1.00000f;
-        z /= 1.08883f;
-
-        x = (x > 0.008856f) ? (float) Math.pow(x, 1.0/3.0) : (7.787f * x) + (16.0f/116.0f);
-        y = (y > 0.008856f) ? (float) Math.pow(y, 1.0/3.0) : (7.787f * y) + (16.0f/116.0f);
-        z = (z > 0.008856f) ? (float) Math.pow(z, 1.0/3.0) : (7.787f * z) + (16.0f/116.0f);
-
-        return new float[] {
-            (116.0f * y) - 16.0f,
-            500.0f * (x - y),
-            200.0f * (y - z)
+        return new double[]{
+                Math.max(0, 116 * y - 16),
+                500 * (x - y),
+                200 * (y - z)
         };
     }
 
-    private static int getVariant(int rgb, int shade) {
-        int r = (rgb >> 16) & 0xFF;
-        int g = (rgb >> 8) & 0xFF;
-        int b = rgb & 0xFF;
-        
-        int mult = switch (shade) {
-            case 0 -> 180;
-            case 1 -> 220;
-            case 2 -> 255;
-            case 3 -> 135;
-            default -> 220;
-        };
-        
-        r = r * mult / 255;
-        g = g * mult / 255;
-        b = b * mult / 255;
-        
-        return (r << 16) | (g << 8) | b;
+    private static double pivotRgb(double n) {
+        return (n > 0.04045) ? Math.pow((n + 0.055) / 1.055, 2.4) : (n / 12.92);
     }
 
-    public static int getRgbColor(byte index) {
-        int i = (index & 255) / 4;
-        int shade = index & 3;
-        MapColor mc = MapColor.byId(i);
-        if (mc == MapColor.NONE) return 0;
-        
-        return 0xFF000000 | getVariant(mc.col, shade);
+    private static double pivotXyz(double n) {
+        return (n > 0.008856) ? Math.pow(n, 1.0 / 3.0) : (7.787 * n + 16.0 / 116.0);
+    }
+
+    private static double deltaE(double[] lab1, double[] lab2) {
+        return Math.sqrt(Math.pow(lab1[0] - lab2[0], 2) + Math.pow(lab1[1] - lab2[1], 2) + Math.pow(lab1[2] - lab2[2], 2));
+    }
+
+    public static Color getColorFromMapByte(byte colorByte) {
+        int id = (colorByte & 255) / 4;
+        int shade = colorByte & 3;
+        MapColor mapColor = MapColor.byId(id);
+        return new Color(fixColor(mapColor.calculateRGBColor(MapColor.Brightness.values()[shade])));
     }
 }

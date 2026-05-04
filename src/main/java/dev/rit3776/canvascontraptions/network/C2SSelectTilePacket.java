@@ -1,41 +1,39 @@
 package dev.rit3776.canvascontraptions.network;
 
-import net.minecraft.network.FriendlyByteBuf;
+import dev.rit3776.canvascontraptions.CanvasContraptions;
+import dev.rit3776.canvascontraptions.CCDataComponents;
+import net.minecraft.network.RegistryFriendlyByteBuf;
+import net.minecraft.network.codec.ByteBufCodecs;
+import net.minecraft.network.codec.StreamCodec;
+import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.world.InteractionHand;
 import net.minecraft.world.item.ItemStack;
-import net.minecraftforge.network.NetworkEvent;
+import net.neoforged.neoforge.network.handling.IPayloadContext;
 
-import java.util.function.Supplier;
+public record C2SSelectTilePacket(int selectedIndex) implements CustomPacketPayload {
+    public static final Type<C2SSelectTilePacket> TYPE = new Type<>(CanvasContraptions.asResource("select_tile"));
 
-public class C2SSelectTilePacket {
-    private final int index;
-    private final InteractionHand hand;
+    public static final StreamCodec<RegistryFriendlyByteBuf, C2SSelectTilePacket> STREAM_CODEC = StreamCodec.composite(
+            ByteBufCodecs.VAR_INT, C2SSelectTilePacket::selectedIndex,
+            C2SSelectTilePacket::new
+    );
 
-    public C2SSelectTilePacket(int index, InteractionHand hand) {
-        this.index = index;
-        this.hand = hand;
+    @Override
+    public Type<? extends CustomPacketPayload> type() {
+        return TYPE;
     }
 
-    public static void encode(C2SSelectTilePacket msg, FriendlyByteBuf buffer) {
-        buffer.writeInt(msg.index);
-        buffer.writeEnum(msg.hand);
-    }
-
-    public static C2SSelectTilePacket decode(FriendlyByteBuf buffer) {
-        return new C2SSelectTilePacket(buffer.readInt(), buffer.readEnum(InteractionHand.class));
-    }
-
-    public static void handle(C2SSelectTilePacket msg, Supplier<NetworkEvent.Context> ctx) {
-        ctx.get().enqueueWork(() -> {
-            ServerPlayer player = ctx.get().getSender();
-            if (player == null) return;
-
-            ItemStack stack = player.getItemInHand(msg.hand);
-            if (stack.hasTag()) {
-                stack.getTag().putInt("SelectedIndex", msg.index);
+    public void handle(IPayloadContext context) {
+        context.enqueueWork(() -> {
+            ServerPlayer player = (ServerPlayer) context.player();
+            ItemStack stack = player.getMainHandItem();
+            
+            CCDataComponents.DraftingLayout layout = stack.get(CCDataComponents.DRAFTING_LAYOUT);
+            if (layout != null) {
+                stack.set(CCDataComponents.DRAFTING_LAYOUT, new CCDataComponents.DraftingLayout(
+                        layout.mapIds(), layout.width(), layout.height(), layout.fileName(), selectedIndex
+                ));
             }
         });
-        ctx.get().setPacketHandled(true);
     }
 }
