@@ -1,7 +1,7 @@
 # Create: Canvas Contraptions
 
 **Version:** 0.1.1  
-**Minecraft Version:** Forge 1.20.1 / NeoForge 1.21.1
+**Minecraft Version:** Forge 1.20.1 / NeoForge 1.21.1  
 **Create Version:** 6.0.6-6.0.8 / 6.0.6-6.0.10
 
 ---
