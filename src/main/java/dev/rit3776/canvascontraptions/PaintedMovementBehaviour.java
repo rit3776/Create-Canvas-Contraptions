@@ -19,42 +19,55 @@ public class PaintedMovementBehaviour implements MovementBehaviour {
 
     @Override
     @OnlyIn(Dist.CLIENT)
-    public void renderInContraption(MovementContext context, VirtualRenderWorld renderWorld, ContraptionMatrices matrices, MultiBufferSource buffer) {
-        if (!context.world.isClientSide) return;
+    public void renderInContraption(MovementContext context, VirtualRenderWorld renderWorld,
+            ContraptionMatrices matrices, MultiBufferSource buffer) {
+        if (!context.world.isClientSide)
+            return;
 
-        if (context.blockEntityData == null) return;
+        if (context.blockEntityData == null)
+            return;
 
         int mapId = context.blockEntityData.getInt("MapID");
-        if (mapId < 0) return;
+        if (mapId < 0)
+            return;
 
         MapItemSavedData data = ClientMapCache.getOrCreate(mapId, context.world);
-        
+
         Direction facing = context.state.getValue(PaintedBlock.FACING);
-        
-        if (!ClientMapCache.hasData(mapId)) return;
+
+        if (!ClientMapCache.hasData(mapId))
+            return;
 
         PoseStack poseStack = matrices.getModel();
         poseStack.pushPose();
+
+        poseStack.translate(context.localPos.getX(), context.localPos.getY(), context.localPos.getZ());
 
         poseStack.translate(0.5, 0.5, 0.5);
 
         switch (facing) {
             case NORTH -> poseStack.mulPose(Axis.YP.rotationDegrees(180));
-            case EAST  -> poseStack.mulPose(Axis.YP.rotationDegrees(90));
-            case WEST  -> poseStack.mulPose(Axis.YP.rotationDegrees(270));
-            case UP    -> poseStack.mulPose(Axis.XP.rotationDegrees(-90));
-            case DOWN  -> poseStack.mulPose(Axis.XP.rotationDegrees(90));
-            default    -> {}
+            case EAST -> poseStack.mulPose(Axis.YP.rotationDegrees(90));
+            case WEST -> poseStack.mulPose(Axis.YP.rotationDegrees(270));
+            case UP -> poseStack.mulPose(Axis.XP.rotationDegrees(-90));
+            case DOWN -> poseStack.mulPose(Axis.XP.rotationDegrees(90));
+            default -> {
+            }
         }
+
+        int rotation = context.blockEntityData.getInt("Rotation");
+        poseStack.mulPose(Axis.ZP.rotationDegrees(rotation * 90.0f));
 
         poseStack.translate(-0.5, 0.5, -0.485);
         poseStack.scale(1f / 128f, -1f / 128f, 1f);
 
-        BlockPos lightPos = context.position != null ? BlockPos.containing(context.position) : context.localPos;
+        BlockPos lightPos = context.position != null
+                ? BlockPos.containing(context.position.x, context.position.y, context.position.z)
+                : context.localPos;
         int light = LevelRenderer.getLightColor(context.world, lightPos);
 
         Minecraft.getInstance().gameRenderer.getMapRenderer()
-                .render(poseStack, buffer, mapId, data, true, light);
+                .render(poseStack, buffer, mapId, data, false, light);
 
         poseStack.popPose();
     }
