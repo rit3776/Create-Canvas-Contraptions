@@ -1,8 +1,8 @@
 # Create: Canvas Contraptions
 
-**Version:** 0.1.0  
-**Minecraft Version:** Forge 1.20.1  
-**Create Version:** 6.0.6
+**Version:** 0.1.1  
+**Minecraft Version:** Forge 1.20.1 / NeoForge 1.21.1
+**Create Version:** 6.0.6-6.0.8 / 6.0.6-6.0.10
 
 ---
 
@@ -24,6 +24,8 @@
 * **Image Placement**: When placing an image using a *Filled Drafting Paper* or *Drafting Tablet*, the process consumes **Cyan, Magenta, Yellow, and Black dyes** from your inventory (one of each per placement).
 * **Create Compatibility**: Images placed using this mod remain intact and visible when moved by Create Contraptions or Trains.
 
+* TIP: You can rotate the image using a wrench.
+
 ---
 
 ## ⚠️ Important Recommendations
@@ -33,9 +35,9 @@
 ---
 
 ## Requirements
-* **Minecraft**: 1.20.1
-* **Forge**: (Required version for 1.20.1)
-* **Create Mod**: 6.0.6
+* **Minecraft**: 1.20.1 / 1.21.1
+* **Loader**: Forge (1.20.1) / NeoForge (1.21.1)
+* **Create Mod**: 6.0.6-6.0.8 / 6.0.6-6.0.10
 
 ---
 
