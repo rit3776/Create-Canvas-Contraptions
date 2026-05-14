@@ -11,13 +11,11 @@ public class CCClientEvents {
 
     @SubscribeEvent
     public static void onLogout(ClientPlayerNetworkEvent.LoggingOut event) {
-        // Clear cache when disconnecting from a server or leaving singleplayer
         ClientMapCache.reset();
     }
 
     @SubscribeEvent
     public static void onLevelUnload(LevelEvent.Unload event) {
-        // Clear cache when a level is unloaded on the client
         if (event.getLevel().isClientSide()) {
             ClientMapCache.reset();
         }

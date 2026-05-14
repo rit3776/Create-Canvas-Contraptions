@@ -44,7 +44,6 @@ public class DraftingTabletGUI extends Screen {
     private String statusMessage = "";
     private int statusTimer = 0;
 
-    // Import temporary state
     private BufferedImage selectedImage;
     private String tempFileName = "";
     private int tempRows = 1;
@@ -59,7 +58,8 @@ public class DraftingTabletGUI extends Screen {
     }
 
     private void loadFromItem() {
-        if (Minecraft.getInstance().player == null) return;
+        if (Minecraft.getInstance().player == null)
+            return;
         ItemStack stack = Minecraft.getInstance().player.getItemInHand(activeHand);
         if (stack.hasTag()) {
             CompoundTag tag = stack.getTag();
@@ -92,61 +92,76 @@ public class DraftingTabletGUI extends Screen {
         int bw = 100;
 
         if (selectedImage == null) {
-            // Management Sidebar
-            this.addRenderableWidget(Button.builder(Component.translatable("gui.canvascontraptions.button.add_new"), b -> selectFile())
-                    .bounds(bx, 40, bw, 20).build());
-            this.addRenderableWidget(Button.builder(Component.translatable("gui.canvascontraptions.button.saved_list"), b -> {
+            this.addRenderableWidget(
+                    Button.builder(Component.translatable("gui.canvascontraptions.button.add_new"), b -> selectFile())
+                            .bounds(bx, 40, bw, 20).build());
+            this.addRenderableWidget(
+                    Button.builder(Component.translatable("gui.canvascontraptions.button.saved_list"), b -> {
                         showLibrary = !showLibrary;
                         scrollOffset = 0;
                         init();
                     })
-                    .bounds(bx, 65, bw, 20).build());
-            
+                            .bounds(bx, 65, bw, 20).build());
+
             if (mapIds != null && !fileName.isEmpty()) {
-                this.addRenderableWidget(Button.builder(Component.translatable("gui.canvascontraptions.button.save_active"), b -> saveToLibrary())
+                this.addRenderableWidget(Button
+                        .builder(Component.translatable("gui.canvascontraptions.button.save_active"),
+                                b -> saveToLibrary())
                         .bounds(bx, 90, bw, 20).build());
             }
-            
-            this.addRenderableWidget(Button.builder(Component.translatable("gui.canvascontraptions.button.close"), b -> this.onClose())
-                    .bounds(bx, 115, bw, 20).build());
+
+            this.addRenderableWidget(
+                    Button.builder(Component.translatable("gui.canvascontraptions.button.close"), b -> this.onClose())
+                            .bounds(bx, 115, bw, 20).build());
         } else {
-            // Import Configuration Sidebar
-            this.addRenderableWidget(Button.builder(Component.translatable("gui.canvascontraptions.button.cols_minus"), b -> {
-                tempCols = Math.max(1, tempCols - 1);
-                init();
-            }).bounds(bx, 40, bw / 2 - 2, 20).build());
-            this.addRenderableWidget(Button.builder(Component.translatable("gui.canvascontraptions.button.cols_plus"), b -> {
-                tempCols++;
-                init();
-            }).bounds(bx + bw / 2 + 2, 40, bw / 2 - 2, 20).build());
+            this.addRenderableWidget(
+                    Button.builder(Component.translatable("gui.canvascontraptions.button.cols_minus"), b -> {
+                        tempCols = Math.max(1, tempCols - 1);
+                        init();
+                    }).bounds(bx, 40, bw / 2 - 2, 20).build());
+            this.addRenderableWidget(
+                    Button.builder(Component.translatable("gui.canvascontraptions.button.cols_plus"), b -> {
+                        tempCols++;
+                        init();
+                    }).bounds(bx + bw / 2 + 2, 40, bw / 2 - 2, 20).build());
 
-            this.addRenderableWidget(Button.builder(Component.translatable("gui.canvascontraptions.button.rows_minus"), b -> {
-                tempRows = Math.max(1, tempRows - 1);
-                init();
-            }).bounds(bx, 65, bw / 2 - 2, 20).build());
-            this.addRenderableWidget(Button.builder(Component.translatable("gui.canvascontraptions.button.rows_plus"), b -> {
-                tempRows++;
-                init();
-            }).bounds(bx + bw / 2 + 2, 65, bw / 2 - 2, 20).build());
-            
-            this.addRenderableWidget(Button.builder(Component.translatable("gui.canvascontraptions.button.dither", 
-                    Component.translatable(dither ? "gui.canvascontraptions.label.on" : "gui.canvascontraptions.label.off").getString()), b -> {
-                dither = !dither;
-                init();
-            }).bounds(bx, 95, bw, 20).build());
+            this.addRenderableWidget(
+                    Button.builder(Component.translatable("gui.canvascontraptions.button.rows_minus"), b -> {
+                        tempRows = Math.max(1, tempRows - 1);
+                        init();
+                    }).bounds(bx, 65, bw / 2 - 2, 20).build());
+            this.addRenderableWidget(
+                    Button.builder(Component.translatable("gui.canvascontraptions.button.rows_plus"), b -> {
+                        tempRows++;
+                        init();
+                    }).bounds(bx + bw / 2 + 2, 65, bw / 2 - 2, 20).build());
 
-            this.addRenderableWidget(Button.builder(Component.translatable("gui.canvascontraptions.button.aspect", 
-                    Component.translatable(keepAspectRatio ? "gui.canvascontraptions.label.fit" : "gui.canvascontraptions.label.stretch").getString()), b -> {
-                keepAspectRatio = !keepAspectRatio;
-                init();
-            }).bounds(bx, 120, bw, 20).build());
-            
-            this.addRenderableWidget(Button.builder(Component.translatable("gui.canvascontraptions.button.import"), b -> submitImport())
-                    .bounds(bx, height - 55, bw, 20).build());
-            this.addRenderableWidget(Button.builder(Component.translatable("gui.canvascontraptions.button.cancel"), b -> {
-                selectedImage = null;
-                init();
-            }).bounds(bx, height - 30, bw, 20).build());
+            this.addRenderableWidget(Button.builder(Component.translatable("gui.canvascontraptions.button.dither",
+                    Component
+                            .translatable(
+                                    dither ? "gui.canvascontraptions.label.on" : "gui.canvascontraptions.label.off")
+                            .getString()),
+                    b -> {
+                        dither = !dither;
+                        init();
+                    }).bounds(bx, 95, bw, 20).build());
+
+            this.addRenderableWidget(Button.builder(Component.translatable("gui.canvascontraptions.button.aspect",
+                    Component.translatable(keepAspectRatio ? "gui.canvascontraptions.label.fit"
+                            : "gui.canvascontraptions.label.stretch").getString()),
+                    b -> {
+                        keepAspectRatio = !keepAspectRatio;
+                        init();
+                    }).bounds(bx, 120, bw, 20).build());
+
+            this.addRenderableWidget(
+                    Button.builder(Component.translatable("gui.canvascontraptions.button.import"), b -> submitImport())
+                            .bounds(bx, height - 55, bw, 20).build());
+            this.addRenderableWidget(
+                    Button.builder(Component.translatable("gui.canvascontraptions.button.cancel"), b -> {
+                        selectedImage = null;
+                        init();
+                    }).bounds(bx, height - 30, bw, 20).build());
         }
     }
 
@@ -160,9 +175,9 @@ public class DraftingTabletGUI extends Screen {
                 filters.flip();
 
                 String path = TinyFileDialogs.tinyfd_openFileDialog(
-                        Component.translatable("gui.canvascontraptions.dialog.select_image").getString(), 
-                        "", filters, 
-                        Component.translatable("gui.canvascontraptions.dialog.image_files").getString(), 
+                        Component.translatable("gui.canvascontraptions.dialog.select_image").getString(),
+                        "", filters,
+                        Component.translatable("gui.canvascontraptions.dialog.image_files").getString(),
                         false);
                 if (path != null) {
                     try {
@@ -172,7 +187,8 @@ public class DraftingTabletGUI extends Screen {
                             this.selectedImage = img;
                             this.tempFileName = file.getName();
                             this.showLibrary = false;
-                            this.statusMessage = Component.translatable("message.canvascontraptions.image_loaded").getString();
+                            this.statusMessage = Component.translatable("message.canvascontraptions.image_loaded")
+                                    .getString();
                             this.statusTimer = 60;
                             setupPreviewTexture(img);
                             init();
@@ -201,7 +217,8 @@ public class DraftingTabletGUI extends Screen {
             }
         }
         previewTexture = new DynamicTexture(nativeImage);
-        previewLocation = Minecraft.getInstance().getTextureManager().register("canvascontraptions_tablet_preview", previewTexture);
+        previewLocation = Minecraft.getInstance().getTextureManager().register("canvascontraptions_tablet_preview",
+                previewTexture);
     }
 
     @Override
@@ -214,8 +231,9 @@ public class DraftingTabletGUI extends Screen {
     }
 
     private void submitImport() {
-        if (selectedImage == null) return;
-        
+        if (selectedImage == null)
+            return;
+
         int canvasWidth = tempCols * 128;
         int canvasHeight = tempRows * 128;
         BufferedImage canvas = new BufferedImage(canvasWidth, canvasHeight, BufferedImage.TYPE_INT_ARGB);
@@ -223,7 +241,8 @@ public class DraftingTabletGUI extends Screen {
         g.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BICUBIC);
 
         if (keepAspectRatio) {
-            double scale = Math.min((double) canvasWidth / selectedImage.getWidth(), (double) canvasHeight / selectedImage.getHeight());
+            double scale = Math.min((double) canvasWidth / selectedImage.getWidth(),
+                    (double) canvasHeight / selectedImage.getHeight());
             int sw = (int) (selectedImage.getWidth() * scale);
             int sh = (int) (selectedImage.getHeight() * scale);
             int ox = (canvasWidth - sw) / 2;
@@ -234,15 +253,18 @@ public class DraftingTabletGUI extends Screen {
         }
         g.dispose();
 
-        List<byte[]> slices = new ArrayList<>();
+        int totalSlices = tempRows * tempCols;
+        int sliceIndex = 0;
         for (int r = 0; r < tempRows; r++) {
             for (int c = 0; c < tempCols; c++) {
                 BufferedImage slice = canvas.getSubimage(c * 128, r * 128, 128, 128);
-                slices.add(convertToMapColors(slice));
+                byte[] data = convertToMapColors(slice);
+                CCNetwork.sendToServer(new C2SImageUploadPacket(sliceIndex, totalSlices, data, tempCols, tempRows,
+                        activeHand, tempFileName));
+                sliceIndex++;
             }
         }
 
-        CCNetwork.sendToServer(new C2SImageUploadPacket(slices, tempCols, tempRows, activeHand, tempFileName));
         this.selectedImage = null;
         this.statusMessage = Component.translatable("message.canvascontraptions.import_success").getString();
         this.statusTimer = 60;
@@ -266,7 +288,7 @@ public class DraftingTabletGUI extends Screen {
                     float g = ((rgb >> 8) & 0xFF) + errorBuf[x][y][1];
                     float b = (rgb & 0xFF) + errorBuf[x][y][2];
 
-                    byte idx = MapColorHelper.findNearestIndex((int)r, (int)g, (int)b);
+                    byte idx = MapColorHelper.findNearestIndex((int) r, (int) g, (int) b);
                     colors[y * 128 + x] = idx;
 
                     int actual = MapColorHelper.getRgbColor(idx);
@@ -274,11 +296,14 @@ public class DraftingTabletGUI extends Screen {
                     float eg = g - ((actual >> 8) & 0xFF);
                     float eb = b - (actual & 0xFF);
 
-                    if (x + 1 < 128) diffuse(errorBuf, x + 1, y, er, eg, eb, 7 / 16f);
+                    if (x + 1 < 128)
+                        diffuse(errorBuf, x + 1, y, er, eg, eb, 7 / 16f);
                     if (y + 1 < 128) {
-                        if (x > 0) diffuse(errorBuf, x - 1, y + 1, er, eg, eb, 3 / 16f);
+                        if (x > 0)
+                            diffuse(errorBuf, x - 1, y + 1, er, eg, eb, 3 / 16f);
                         diffuse(errorBuf, x, y + 1, er, eg, eb, 5 / 16f);
-                        if (x + 1 < 128) diffuse(errorBuf, x + 1, y + 1, er, eg, eb, 1 / 16f);
+                        if (x + 1 < 128)
+                            diffuse(errorBuf, x + 1, y + 1, er, eg, eb, 1 / 16f);
                     }
                 }
             }
@@ -300,23 +325,27 @@ public class DraftingTabletGUI extends Screen {
 
     private void saveToLibrary() {
         if (savedNames.size() >= 16) {
-            statusMessage = ChatFormatting.RED + Component.translatable("message.canvascontraptions.library_full").getString();
+            statusMessage = ChatFormatting.RED
+                    + Component.translatable("message.canvascontraptions.library_full").getString();
             statusTimer = 100;
             return;
         }
         if (mapIds == null || fileName.isEmpty()) {
-            statusMessage = ChatFormatting.RED + Component.translatable("message.canvascontraptions.nothing_to_save").getString();
+            statusMessage = ChatFormatting.RED
+                    + Component.translatable("message.canvascontraptions.nothing_to_save").getString();
             statusTimer = 60;
             return;
         }
         CCNetwork.sendToServer(new C2STabletActionPacket(C2STabletActionPacket.Action.SAVE, -1, activeHand));
-        statusMessage = ChatFormatting.GREEN + Component.translatable("message.canvascontraptions.saved_to_library").getString();
+        statusMessage = ChatFormatting.GREEN
+                + Component.translatable("message.canvascontraptions.saved_to_library").getString();
         statusTimer = 60;
     }
 
     private void deleteFromLibrary(int index) {
         CCNetwork.sendToServer(new C2STabletActionPacket(C2STabletActionPacket.Action.DELETE, index, activeHand));
-        statusMessage = ChatFormatting.YELLOW + Component.translatable("message.canvascontraptions.deleted_from_library").getString();
+        statusMessage = ChatFormatting.YELLOW
+                + Component.translatable("message.canvascontraptions.deleted_from_library").getString();
         statusTimer = 60;
         init();
     }
@@ -346,7 +375,8 @@ public class DraftingTabletGUI extends Screen {
             int ly = 35;
             for (int i = 0; i < savedNames.size(); i++) {
                 double dy = ly + i * 15 - scrollOffset;
-                if (dy < ly - 5 || dy > ly + 140) continue;
+                if (dy < ly - 5 || dy > ly + 140)
+                    continue;
 
                 if (mouseX >= lx && mouseX < lx + 200 && mouseY >= dy && mouseY < dy + 15) {
                     if (button == 0) {
@@ -378,9 +408,9 @@ public class DraftingTabletGUI extends Screen {
             int startY = areaY + (areaH - gridH) / 2;
 
             if (mouseX >= startX && mouseX < startX + gridW && mouseY >= startY && mouseY < startY + gridH) {
-                int col = (int) ((mouseX - startX) / (gridW / (double)columns));
-                int row = (int) ((mouseY - startY) / (gridH / (double)rows));
-                int index = (int)row * columns + (int)col;
+                int col = (int) ((mouseX - startX) / (gridW / (double) columns));
+                int row = (int) ((mouseY - startY) / (gridH / (double) rows));
+                int index = (int) row * columns + (int) col;
                 if (index >= 0 && index < mapIds.length) {
                     CCNetwork.sendToServer(new C2SSelectTilePacket(index, activeHand));
                     this.onClose();
@@ -398,7 +428,7 @@ public class DraftingTabletGUI extends Screen {
         super.render(guiGraphics, mouseX, mouseY, partialTicks);
 
         guiGraphics.drawCenteredString(font, this.title, width / 2, 10, 0xFFFFFF);
-        
+
         if (statusTimer > 0) {
             guiGraphics.drawCenteredString(font, statusMessage, width / 2, height - 30, 0xEEEEEE);
             statusTimer--;
@@ -410,21 +440,26 @@ public class DraftingTabletGUI extends Screen {
         int areaH = height - areaY - 20;
 
         if (showLibrary && selectedImage == null) {
-            guiGraphics.drawString(font, Component.translatable("gui.canvascontraptions.saved_images_header"), sidebarW + 10, 20, 0xFFFF00);
+            guiGraphics.drawString(font, Component.translatable("gui.canvascontraptions.saved_images_header"),
+                    sidebarW + 10, 20, 0xFFFF00);
             int lx = sidebarW + 10;
             int ly = 35;
             guiGraphics.enableScissor(lx, ly, lx + 200, ly + 150);
             for (int i = 0; i < savedNames.size(); i++) {
                 double dy = ly + i * 15 - scrollOffset;
-                int color = (mouseX >= lx && mouseX < lx + 200 && mouseY >= dy && mouseY < dy + 15) ? 0xFFFFFF : 0xAAAAAA;
-                guiGraphics.drawString(font, (i + 1) + ". " + savedNames.get(i), lx, (int)dy, color);
+                int color = (mouseX >= lx && mouseX < lx + 200 && mouseY >= dy && mouseY < dy + 15) ? 0xFFFFFF
+                        : 0xAAAAAA;
+                guiGraphics.drawString(font, (i + 1) + ". " + savedNames.get(i), lx, (int) dy, color);
             }
             guiGraphics.disableScissor();
-            if (savedNames.isEmpty()) guiGraphics.drawString(font, Component.translatable("gui.canvascontraptions.library_empty"), lx, ly, 0x666666);
+            if (savedNames.isEmpty())
+                guiGraphics.drawString(font, Component.translatable("gui.canvascontraptions.library_empty"), lx, ly,
+                        0x666666);
         } else if (selectedImage != null) {
-            // Draw import info in sidebar bottom
-            guiGraphics.drawString(font, Component.translatable("gui.canvascontraptions.label.image", tempFileName), 10, height - 85, 0xAAAAAA);
-            guiGraphics.drawString(font, Component.translatable("gui.canvascontraptions.label.size", selectedImage.getWidth() + "x" + selectedImage.getHeight()), 10, height - 74, 0x00FF00);
+            guiGraphics.drawString(font, Component.translatable("gui.canvascontraptions.label.image", tempFileName), 10,
+                    height - 85, 0xAAAAAA);
+            guiGraphics.drawString(font, Component.translatable("gui.canvascontraptions.label.size",
+                    selectedImage.getWidth() + "x" + selectedImage.getHeight()), 10, height - 74, 0x00FF00);
 
             double gridAspect = (double) tempCols / tempRows;
             int gridW, gridH;
@@ -441,7 +476,7 @@ public class DraftingTabletGUI extends Screen {
 
             guiGraphics.fill(startX, startY, startX + gridW, startY + gridH, 0xFF111111);
             drawRectOutline(guiGraphics, startX, startY, gridW, gridH, 0xFFFFFFFF);
-            
+
             if (previewLocation != null) {
                 if (keepAspectRatio) {
                     double imgAspect = (double) selectedImage.getWidth() / selectedImage.getHeight();
@@ -502,7 +537,12 @@ public class DraftingTabletGUI extends Screen {
         }
 
         if (selectedImage == null) {
-            guiGraphics.drawString(font, Component.translatable("gui.canvascontraptions.label.active", (fileName.isEmpty() ? Component.translatable("gui.canvascontraptions.label.none").getString() : fileName)), 10, height - 20, 0xAAAAAA);
+            guiGraphics.drawString(font,
+                    Component.translatable("gui.canvascontraptions.label.active",
+                            (fileName.isEmpty()
+                                    ? Component.translatable("gui.canvascontraptions.label.none").getString()
+                                    : fileName)),
+                    10, height - 20, 0xAAAAAA);
         }
     }
 

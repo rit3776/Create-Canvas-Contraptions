@@ -29,15 +29,18 @@ public class FilledDraftingPaperItem extends Item {
     public InteractionResult useOn(UseOnContext context) {
         Level level = context.getLevel();
         Player player = context.getPlayer();
-        if (player == null) return InteractionResult.PASS;
+        if (player == null)
+            return InteractionResult.PASS;
 
         ItemStack stack = context.getItemInHand();
         CompoundTag tag = stack.getOrCreateTag();
-        if (!tag.contains("MapIDs")) return InteractionResult.FAIL;
+        if (!tag.contains("MapIDs"))
+            return InteractionResult.FAIL;
 
         int selectedIndex = tag.getInt("SelectedIndex");
         int[] ids = tag.getIntArray("MapIDs");
-        if (selectedIndex < 0 || selectedIndex >= ids.length) return InteractionResult.FAIL;
+        if (selectedIndex < 0 || selectedIndex >= ids.length)
+            return InteractionResult.FAIL;
 
         int mapId = ids[selectedIndex];
 
@@ -46,10 +49,10 @@ public class FilledDraftingPaperItem extends Item {
         BlockPos placePos = pos.relative(face);
 
         if (level.getBlockState(placePos).isAir() || level.getBlockState(placePos).canBeReplaced()) {
-            // Check for dyes in survival
             if (!player.getAbilities().instabuild) {
                 if (!consumeDyes(player)) {
-                    player.displayClientMessage(Component.translatable("message.canvascontraptions.missing_dyes"), true);
+                    player.displayClientMessage(Component.translatable("message.canvascontraptions.missing_dyes"),
+                            true);
                     return InteractionResult.FAIL;
                 }
             }
@@ -60,7 +63,7 @@ public class FilledDraftingPaperItem extends Item {
                 if (level.getBlockEntity(placePos) instanceof PaintedBlockEntity be) {
                     be.setMapId(mapId);
                 }
-                
+
                 if (!player.getAbilities().instabuild && !(stack.getItem() instanceof DraftingTabletItem)) {
                     stack.shrink(1);
                 }
@@ -82,10 +85,10 @@ public class FilledDraftingPaperItem extends Item {
                     break;
                 }
             }
-            if (!found) return false;
+            if (!found)
+                return false;
         }
-        
-        // Actually consume
+
         for (Item dye : dyes) {
             for (int i = 0; i < player.getInventory().getContainerSize(); i++) {
                 ItemStack invStack = player.getInventory().getItem(i);
@@ -101,8 +104,7 @@ public class FilledDraftingPaperItem extends Item {
     @Override
     public InteractionResultHolder<ItemStack> use(Level level, Player player, InteractionHand hand) {
         if (level.isClientSide) {
-            // Open tile selection GUI
-            DraftingGUI.openFilled(hand);
+            ClientHooks.openFilledDraftingPaper(hand);
         }
         return InteractionResultHolder.sidedSuccess(player.getItemInHand(hand), level.isClientSide);
     }

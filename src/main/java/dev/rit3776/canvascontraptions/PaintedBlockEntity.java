@@ -24,8 +24,7 @@ public class PaintedBlockEntity extends BlockEntity {
         setChanged();
         if (level != null && !level.isClientSide) {
             level.sendBlockUpdated(worldPosition, getBlockState(), getBlockState(), 3);
-            
-            // Sync map data to nearby players
+
             MapItemSavedData data = level.getMapData("map_" + id);
             if (data != null) {
                 CCNetwork.broadcastToAllInRange(new S2CMapDataPacket(id, data.colors), level, worldPosition);

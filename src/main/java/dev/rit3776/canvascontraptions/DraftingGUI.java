@@ -54,7 +54,7 @@ public class DraftingGUI extends Screen {
             if (stack.hasTag()) {
                 this.mapIds = stack.getTag().getIntArray("MapIDs");
                 this.selectedIndexOnStack = stack.getTag().getInt("SelectedIndex");
-                
+
                 if (mode == Mode.FILLED) {
                     if (stack.getTag().contains("Width")) {
                         this.columns = stack.getTag().getInt("Width");
@@ -68,16 +68,19 @@ public class DraftingGUI extends Screen {
     }
 
     public static void openBlank(InteractionHand hand) {
-        Minecraft.getInstance().setScreen(new DraftingGUI(Component.translatable("gui.canvascontraptions.drafting_paper.new"), hand, Mode.BLANK));
+        Minecraft.getInstance().setScreen(
+                new DraftingGUI(Component.translatable("gui.canvascontraptions.drafting_paper.new"), hand, Mode.BLANK));
     }
 
     public static void openFilled(InteractionHand hand) {
         Minecraft.getInstance()
-                .setScreen(new DraftingGUI(Component.translatable("gui.canvascontraptions.drafting_paper.selection"), hand, Mode.FILLED));
+                .setScreen(new DraftingGUI(Component.translatable("gui.canvascontraptions.drafting_paper.selection"),
+                        hand, Mode.FILLED));
     }
 
     public static void openTablet(InteractionHand hand) {
-        Minecraft.getInstance().setScreen(new DraftingGUI(Component.translatable("gui.canvascontraptions.drafting_tablet.title"), hand, Mode.TABLET));
+        Minecraft.getInstance().setScreen(new DraftingGUI(
+                Component.translatable("gui.canvascontraptions.drafting_tablet.title"), hand, Mode.TABLET));
     }
 
     @Override
@@ -95,50 +98,62 @@ public class DraftingGUI extends Screen {
 
         if (mode == Mode.BLANK || mode == Mode.TABLET) {
             if (selectedImage == null) {
-                // Management Mode
                 this.addRenderableWidget(Button
-                        .builder(Component.translatable("gui.canvascontraptions.button.select_file"), b -> selectFile()).bounds(bx, 40, bw, 20)
+                        .builder(Component.translatable("gui.canvascontraptions.button.select_file"), b -> selectFile())
+                        .bounds(bx, 40, bw, 20)
                         .build());
-                this.addRenderableWidget(Button.builder(Component.translatable("gui.canvascontraptions.button.close"), b -> this.onClose())
+                this.addRenderableWidget(Button
+                        .builder(Component.translatable("gui.canvascontraptions.button.close"), b -> this.onClose())
                         .bounds(bx, 65, bw, 20).build());
             } else {
-                // Import Configuration Mode
-                this.addRenderableWidget(Button.builder(Component.translatable("gui.canvascontraptions.button.cols_minus"), b -> {
-                    columns = Math.max(1, columns - 1);
-                    init();
-                }).bounds(bx, 40, bw / 2 - 2, 20).build());
-                this.addRenderableWidget(Button.builder(Component.translatable("gui.canvascontraptions.button.cols_plus"), b -> {
-                    columns++;
-                    init();
-                }).bounds(bx + bw / 2 + 2, 40, bw / 2 - 2, 20).build());
+                this.addRenderableWidget(
+                        Button.builder(Component.translatable("gui.canvascontraptions.button.cols_minus"), b -> {
+                            columns = Math.max(1, columns - 1);
+                            init();
+                        }).bounds(bx, 40, bw / 2 - 2, 20).build());
+                this.addRenderableWidget(
+                        Button.builder(Component.translatable("gui.canvascontraptions.button.cols_plus"), b -> {
+                            columns++;
+                            init();
+                        }).bounds(bx + bw / 2 + 2, 40, bw / 2 - 2, 20).build());
 
-                this.addRenderableWidget(Button.builder(Component.translatable("gui.canvascontraptions.button.rows_minus"), b -> {
-                    rows = Math.max(1, rows - 1);
-                    init();
-                }).bounds(bx, 65, bw / 2 - 2, 20).build());
-                this.addRenderableWidget(Button.builder(Component.translatable("gui.canvascontraptions.button.rows_plus"), b -> {
-                    rows++;
-                    init();
-                }).bounds(bx + bw / 2 + 2, 65, bw / 2 - 2, 20).build());
+                this.addRenderableWidget(
+                        Button.builder(Component.translatable("gui.canvascontraptions.button.rows_minus"), b -> {
+                            rows = Math.max(1, rows - 1);
+                            init();
+                        }).bounds(bx, 65, bw / 2 - 2, 20).build());
+                this.addRenderableWidget(
+                        Button.builder(Component.translatable("gui.canvascontraptions.button.rows_plus"), b -> {
+                            rows++;
+                            init();
+                        }).bounds(bx + bw / 2 + 2, 65, bw / 2 - 2, 20).build());
 
-                this.addRenderableWidget(Button.builder(Component.translatable("gui.canvascontraptions.button.dither", 
-                        Component.translatable(dither ? "gui.canvascontraptions.label.on" : "gui.canvascontraptions.label.off").getString()), b -> {
-                    dither = !dither;
-                    init();
-                }).bounds(bx, 95, bw, 20).build());
+                this.addRenderableWidget(Button.builder(Component.translatable("gui.canvascontraptions.button.dither",
+                        Component
+                                .translatable(
+                                        dither ? "gui.canvascontraptions.label.on" : "gui.canvascontraptions.label.off")
+                                .getString()),
+                        b -> {
+                            dither = !dither;
+                            init();
+                        }).bounds(bx, 95, bw, 20).build());
 
-                this.addRenderableWidget(Button.builder(Component.translatable("gui.canvascontraptions.button.aspect", 
-                        Component.translatable(keepAspectRatio ? "gui.canvascontraptions.label.fit" : "gui.canvascontraptions.label.stretch").getString()), b -> {
-                    keepAspectRatio = !keepAspectRatio;
-                    init();
-                }).bounds(bx, 120, bw, 20).build());
+                this.addRenderableWidget(Button.builder(Component.translatable("gui.canvascontraptions.button.aspect",
+                        Component.translatable(keepAspectRatio ? "gui.canvascontraptions.label.fit"
+                                : "gui.canvascontraptions.label.stretch").getString()),
+                        b -> {
+                            keepAspectRatio = !keepAspectRatio;
+                            init();
+                        }).bounds(bx, 120, bw, 20).build());
 
-                this.addRenderableWidget(Button.builder(Component.translatable("gui.canvascontraptions.button.import"), b -> submit())
-                        .bounds(bx, height - 55, bw, 20).build());
-                this.addRenderableWidget(Button.builder(Component.translatable("gui.canvascontraptions.button.cancel"), b -> {
-                    selectedImage = null;
-                    init();
-                }).bounds(bx, height - 30, bw, 20).build());
+                this.addRenderableWidget(
+                        Button.builder(Component.translatable("gui.canvascontraptions.button.import"), b -> submit())
+                                .bounds(bx, height - 55, bw, 20).build());
+                this.addRenderableWidget(
+                        Button.builder(Component.translatable("gui.canvascontraptions.button.cancel"), b -> {
+                            selectedImage = null;
+                            init();
+                        }).bounds(bx, height - 30, bw, 20).build());
             }
         }
     }
@@ -153,9 +168,9 @@ public class DraftingGUI extends Screen {
                 filters.flip();
 
                 String path = TinyFileDialogs.tinyfd_openFileDialog(
-                        Component.translatable("gui.canvascontraptions.dialog.select_image").getString(), 
-                        "", filters, 
-                        Component.translatable("gui.canvascontraptions.dialog.image_files").getString(), 
+                        Component.translatable("gui.canvascontraptions.dialog.select_image").getString(),
+                        "", filters,
+                        Component.translatable("gui.canvascontraptions.dialog.image_files").getString(),
                         false);
                 if (path != null) {
                     try {
@@ -191,7 +206,8 @@ public class DraftingGUI extends Screen {
             }
         }
         previewTexture = new DynamicTexture(nativeImage);
-        previewLocation = Minecraft.getInstance().getTextureManager().register("canvascontraptions_preview", previewTexture);
+        previewLocation = Minecraft.getInstance().getTextureManager().register("canvascontraptions_preview",
+                previewTexture);
     }
 
     @Override
@@ -204,7 +220,8 @@ public class DraftingGUI extends Screen {
     }
 
     private void submit() {
-        if (selectedImage == null) return;
+        if (selectedImage == null)
+            return;
 
         int canvasWidth = columns * 128;
         int canvasHeight = rows * 128;
@@ -213,7 +230,8 @@ public class DraftingGUI extends Screen {
         g.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BICUBIC);
 
         if (keepAspectRatio) {
-            double scale = Math.min((double) canvasWidth / selectedImage.getWidth(), (double) canvasHeight / selectedImage.getHeight());
+            double scale = Math.min((double) canvasWidth / selectedImage.getWidth(),
+                    (double) canvasHeight / selectedImage.getHeight());
             int sw = (int) (selectedImage.getWidth() * scale);
             int sh = (int) (selectedImage.getHeight() * scale);
             int ox = (canvasWidth - sw) / 2;
@@ -224,15 +242,17 @@ public class DraftingGUI extends Screen {
         }
         g.dispose();
 
-        List<byte[]> slices = new ArrayList<>();
+        int totalSlices = rows * columns;
+        int sliceIndex = 0;
         for (int r = 0; r < rows; r++) {
             for (int c = 0; c < columns; c++) {
                 BufferedImage slice = canvas.getSubimage(c * 128, r * 128, 128, 128);
-                slices.add(convertToMapColors(slice));
+                byte[] data = convertToMapColors(slice);
+                CCNetwork.sendToServer(new C2SImageUploadPacket(sliceIndex, totalSlices, data, columns, rows,
+                        activeHand, selectedFileName));
+                sliceIndex++;
             }
         }
-
-        CCNetwork.sendToServer(new C2SImageUploadPacket(slices, columns, rows, activeHand, selectedFileName));
         this.onClose();
     }
 
@@ -253,7 +273,7 @@ public class DraftingGUI extends Screen {
                     float g = ((rgb >> 8) & 0xFF) + errorBuf[x][y][1];
                     float b = (rgb & 0xFF) + errorBuf[x][y][2];
 
-                    byte idx = MapColorHelper.findNearestIndex((int)r, (int)g, (int)b);
+                    byte idx = MapColorHelper.findNearestIndex((int) r, (int) g, (int) b);
                     colors[y * 128 + x] = idx;
 
                     int actual = MapColorHelper.getRgbColor(idx);
@@ -261,11 +281,14 @@ public class DraftingGUI extends Screen {
                     float eg = g - ((actual >> 8) & 0xFF);
                     float eb = b - (actual & 0xFF);
 
-                    if (x + 1 < 128) diffuse(errorBuf, x + 1, y, er, eg, eb, 7 / 16f);
+                    if (x + 1 < 128)
+                        diffuse(errorBuf, x + 1, y, er, eg, eb, 7 / 16f);
                     if (y + 1 < 128) {
-                        if (x > 0) diffuse(errorBuf, x - 1, y + 1, er, eg, eb, 3 / 16f);
+                        if (x > 0)
+                            diffuse(errorBuf, x - 1, y + 1, er, eg, eb, 3 / 16f);
                         diffuse(errorBuf, x, y + 1, er, eg, eb, 5 / 16f);
-                        if (x + 1 < 128) diffuse(errorBuf, x + 1, y + 1, er, eg, eb, 1 / 16f);
+                        if (x + 1 < 128)
+                            diffuse(errorBuf, x + 1, y + 1, er, eg, eb, 1 / 16f);
                     }
                 }
             }
@@ -337,10 +360,9 @@ public class DraftingGUI extends Screen {
             int startX = sidebarW + (areaW - gridW) / 2;
             int startY = areaY + (areaH - gridH) / 2;
 
-            // Draw grid outline and background
             guiGraphics.fill(startX, startY, startX + gridW, startY + gridH, 0xFF111111);
             drawRectOutline(guiGraphics, startX, startY, gridW, gridH, 0xFFFFFFFF);
-            
+
             if (selectedImage != null && previewLocation != null) {
                 if (keepAspectRatio) {
                     double imgAspect = (double) selectedImage.getWidth() / selectedImage.getHeight();
@@ -360,7 +382,6 @@ public class DraftingGUI extends Screen {
                 }
             }
 
-            // Draw grid lines
             for (int i = 1; i < columns; i++) {
                 int lx = startX + i * gridW / columns;
                 guiGraphics.fill(lx, startY, lx + 1, startY + gridH, 0x80FFFFFF);
@@ -371,8 +392,11 @@ public class DraftingGUI extends Screen {
             }
 
             if (selectedImage != null) {
-                guiGraphics.drawString(font, Component.translatable("gui.canvascontraptions.label.image", selectedFileName), 10, height - 85, 0xAAAAAA);
-                guiGraphics.drawString(font, Component.translatable("gui.canvascontraptions.label.size", selectedImage.getWidth() + "x" + selectedImage.getHeight()), 10, height - 74, 0x00FF00);
+                guiGraphics.drawString(font,
+                        Component.translatable("gui.canvascontraptions.label.image", selectedFileName), 10, height - 85,
+                        0xAAAAAA);
+                guiGraphics.drawString(font, Component.translatable("gui.canvascontraptions.label.size",
+                        selectedImage.getWidth() + "x" + selectedImage.getHeight()), 10, height - 74, 0x00FF00);
             }
         } else if (mode == Mode.FILLED && mapIds != null) {
             int size = 200;

@@ -15,35 +15,37 @@ public class PaintedBlockRenderer implements BlockEntityRenderer<PaintedBlockEnt
 
     @Override
     public void render(PaintedBlockEntity be, float partialTicks, PoseStack poseStack,
-                       MultiBufferSource buffer, int combinedLight, int combinedOverlay) {
+            MultiBufferSource buffer, int combinedLight, int combinedOverlay) {
         int mapId = be.getMapId();
-        if (mapId < 0) return;
+        if (mapId < 0)
+            return;
 
-        if (be.getLevel() == null) return;
+        if (be.getLevel() == null)
+            return;
         MapItemSavedData data = ClientMapCache.getOrCreate(mapId, be.getLevel());
-        
+
         Direction facing = be.getBlockState().getValue(PaintedBlock.FACING);
-        
-        if (!ClientMapCache.hasData(mapId)) return;
+
+        if (!ClientMapCache.hasData(mapId))
+            return;
 
         poseStack.pushPose();
 
         poseStack.translate(0.5, 0.5, 0.5);
 
-        // Standard rotations to point local +Z at world 'facing'
         switch (facing) {
             case NORTH -> poseStack.mulPose(Axis.YP.rotationDegrees(180));
-            case EAST  -> poseStack.mulPose(Axis.YP.rotationDegrees(90));
-            case WEST  -> poseStack.mulPose(Axis.YP.rotationDegrees(270));
-            case UP    -> poseStack.mulPose(Axis.XP.rotationDegrees(-90));
-            case DOWN  -> poseStack.mulPose(Axis.XP.rotationDegrees(90));
-            default    -> {} // SOUTH
+            case EAST -> poseStack.mulPose(Axis.YP.rotationDegrees(90));
+            case WEST -> poseStack.mulPose(Axis.YP.rotationDegrees(270));
+            case UP -> poseStack.mulPose(Axis.XP.rotationDegrees(-90));
+            case DOWN -> poseStack.mulPose(Axis.XP.rotationDegrees(90));
+            default -> {
+            } // SOUTH
         }
 
         float angle = be.getRotation() * 90.0f;
         poseStack.mulPose(Axis.ZP.rotationDegrees(angle));
 
-        // Adjusted offset to be slightly more towards the "air" side to avoid burying
         poseStack.translate(-0.5, 0.5, -0.485);
         poseStack.scale(1f / 128f, -1f / 128f, 1f);
 

@@ -21,11 +21,10 @@ public class ClientMapCache {
 
     private static final Map<Integer, DynamicTexture> textureCache = new ConcurrentHashMap<>();
     private static final Map<Integer, ResourceLocation> textureLocations = new ConcurrentHashMap<>();
-    // Simple color cache to avoid concurrent access to MapItemSavedData.colors
     private static final Map<Integer, byte[]> colorCache = new ConcurrentHashMap<>();
     private static final int MAX_TEXTURES = 256;
-    private static final Map<Integer, ResourceLocation> textureLru = Collections.synchronizedMap(new LinkedHashMap<>(16, 0.75f, true));
-    // Cached flag indicating whether a map contains any non-zero pixels (avoids per-frame scans)
+    private static final Map<Integer, ResourceLocation> textureLru = Collections
+            .synchronizedMap(new LinkedHashMap<>(16, 0.75f, true));
     private static final Map<Integer, Boolean> hasDataMap = new ConcurrentHashMap<>();
 
     public static MapItemSavedData getOrCreate(int mapId, Level level) {
@@ -34,7 +33,6 @@ public class ClientMapCache {
             hasDataMap.put(id, false);
             return MapItemSavedData.createForClient((byte) 3, false, level.dimension());
         });
-        // Ensure a color buffer exists for this map to avoid concurrent access to the internal array
         colorCache.computeIfAbsent(mapId, id -> new byte[data.colors.length]);
         return data;
     }
@@ -46,7 +44,6 @@ public class ClientMapCache {
     public static ResourceLocation getTextureLocation(int mapId, Level level) {
         getOrCreate(mapId, level);
 
-        // If already registered, bump LRU and return
         ResourceLocation existing = textureLocations.get(mapId);
         if (existing != null) {
             textureLru.put(mapId, existing);
@@ -54,7 +51,6 @@ public class ClientMapCache {
         }
 
         synchronized (textureLru) {
-            // Evict least-recently-used texture if over the limit
             if (textureLru.size() >= MAX_TEXTURES) {
                 Iterator<Integer> it = textureLru.keySet().iterator();
                 if (it.hasNext()) {
@@ -63,7 +59,10 @@ public class ClientMapCache {
                     textureLocations.remove(oldest);
                     DynamicTexture oldTex = textureCache.remove(oldest);
                     if (oldLoc != null) {
-                        try { Minecraft.getInstance().getTextureManager().release(oldLoc); } catch (Exception ignored) {}
+                        try {
+                            Minecraft.getInstance().getTextureManager().release(oldLoc);
+                        } catch (Exception ignored) {
+                        }
                     }
                 }
             }
@@ -78,15 +77,16 @@ public class ClientMapCache {
         }
     }
 
-
     private static void updateTexture(int mapId) {
         DynamicTexture texture = textureCache.get(mapId);
-        if (texture == null) return;
+        if (texture == null)
+            return;
 
         byte[] colors = colorCache.get(mapId);
         if (colors == null) {
             MapItemSavedData data = mapCache.get(mapId);
-            if (data == null) return;
+            if (data == null)
+                return;
             colors = Arrays.copyOf(data.colors, data.colors.length);
             colorCache.put(mapId, colors);
         }
@@ -115,7 +115,10 @@ public class ClientMapCache {
 
             boolean any = false;
             for (byte b : copy) {
-                if (b != 0) { any = true; break; }
+                if (b != 0) {
+                    any = true;
+                    break;
+                }
             }
             hasDataMap.put(mapId, any);
 
@@ -138,7 +141,7 @@ public class ClientMapCache {
                 mc.getTextureManager().release(location);
             });
         }
-        
+
         mapCache.clear();
         textureCache.clear();
         textureLocations.clear();
