@@ -225,15 +225,16 @@ public class DraftingGUI extends Screen {
         }
         g.dispose();
 
-        List<byte[]> slices = new ArrayList<>();
+        int totalSlices = rows * columns;
+        int sliceIndex = 0;
         for (int r = 0; r < rows; r++) {
             for (int c = 0; c < columns; c++) {
                 BufferedImage slice = canvas.getSubimage(c * 128, r * 128, 128, 128);
-                slices.add(convertToMapColors(slice));
+                byte[] data = convertToMapColors(slice);
+                PacketDistributor.sendToServer(new C2SImageUploadPacket(sliceIndex, totalSlices, data, columns, rows, activeHand, selectedFileName));
+                sliceIndex++;
             }
         }
-
-        PacketDistributor.sendToServer(new C2SImageUploadPacket(slices, columns, rows, activeHand, selectedFileName));
         this.onClose();
     }
 

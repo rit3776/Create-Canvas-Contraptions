@@ -7,7 +7,8 @@ import net.minecraft.world.level.saveddata.maps.MapId;
 import net.minecraft.world.level.saveddata.maps.MapItemSavedData;
 import net.minecraft.world.level.storage.LevelResource;
 import net.neoforged.neoforge.network.PacketDistributor;
-import org.apache.commons.codec.digest.DigestUtils;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -25,7 +26,7 @@ public class ServerMapManager {
             initialize(level);
         }
 
-        String hash = DigestUtils.sha256Hex(colors);
+        String hash = bytesToHex(calculateSHA256(colors));
         Integer existingId = hashToId.get(hash);
 
         if (existingId != null) {
@@ -69,7 +70,7 @@ public class ServerMapManager {
                                 int id = Integer.parseInt(fileName.substring(4, fileName.length() - 4));
                                 MapItemSavedData data = level.getMapData(new MapId(id));
                                 if (data != null) {
-                                    String hash = DigestUtils.sha256Hex(data.colors);
+                                    String hash = bytesToHex(calculateSHA256(data.colors));
                                     hashToId.putIfAbsent(hash, id);
                                 }
                             } catch (Exception ignored) {
@@ -86,5 +87,24 @@ public class ServerMapManager {
     public static void clear() {
         hashToId.clear();
         initialized = false;
+    }
+
+    private static byte[] calculateSHA256(byte[] input) {
+        try {
+            MessageDigest digest = MessageDigest.getInstance("SHA-256");
+            return digest.digest(input);
+        } catch (NoSuchAlgorithmException e) {
+            throw new RuntimeException("SHA-256 algorithm not found", e);
+        }
+    }
+
+    private static String bytesToHex(byte[] bytes) {
+        StringBuilder hexString = new StringBuilder();
+        for (byte b : bytes) {
+            String hex = Integer.toHexString(0xff & b);
+            if (hex.length() == 1) hexString.append('0');
+            hexString.append(hex);
+        }
+        return hexString.toString();
     }
 }

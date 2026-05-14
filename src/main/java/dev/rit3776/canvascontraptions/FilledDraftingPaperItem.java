@@ -28,15 +28,18 @@ public class FilledDraftingPaperItem extends Item {
     public InteractionResult useOn(UseOnContext context) {
         Level level = context.getLevel();
         Player player = context.getPlayer();
-        if (player == null) return InteractionResult.PASS;
+        if (player == null)
+            return InteractionResult.PASS;
 
         ItemStack stack = context.getItemInHand();
         CCDataComponents.DraftingLayout layout = stack.get(CCDataComponents.DRAFTING_LAYOUT);
-        if (layout == null) return InteractionResult.FAIL;
+        if (layout == null)
+            return InteractionResult.FAIL;
 
         int selectedIndex = layout.selectedIndex();
         List<Integer> ids = layout.mapIds();
-        if (selectedIndex < 0 || selectedIndex >= ids.size()) return InteractionResult.FAIL;
+        if (selectedIndex < 0 || selectedIndex >= ids.size())
+            return InteractionResult.FAIL;
 
         int mapId = ids.get(selectedIndex);
 
@@ -45,10 +48,10 @@ public class FilledDraftingPaperItem extends Item {
         BlockPos placePos = pos.relative(face);
 
         if (level.getBlockState(placePos).isAir() || level.getBlockState(placePos).canBeReplaced()) {
-            // Check for dyes in survival
             if (!player.getAbilities().instabuild) {
                 if (!consumeDyes(player)) {
-                    player.displayClientMessage(Component.translatable("message.canvascontraptions.missing_dyes"), true);
+                    player.displayClientMessage(Component.translatable("message.canvascontraptions.missing_dyes"),
+                            true);
                     return InteractionResult.FAIL;
                 }
             }
@@ -59,7 +62,7 @@ public class FilledDraftingPaperItem extends Item {
                 if (level.getBlockEntity(placePos) instanceof PaintedBlockEntity be) {
                     be.setMapId(mapId);
                 }
-                
+
                 if (!player.getAbilities().instabuild && !(stack.getItem() instanceof DraftingTabletItem)) {
                     stack.shrink(1);
                 }
@@ -81,10 +84,10 @@ public class FilledDraftingPaperItem extends Item {
                     break;
                 }
             }
-            if (!found) return false;
+            if (!found)
+                return false;
         }
-        
-        // Actually consume
+
         for (Item dye : dyes) {
             for (int i = 0; i < player.getInventory().getContainerSize(); i++) {
                 ItemStack invStack = player.getInventory().getItem(i);
@@ -111,13 +114,14 @@ public class FilledDraftingPaperItem extends Item {
         if (layout != null) {
             tooltip.add(Component.translatable("tooltip.canvascontraptions.file")
                     .append(Component.literal(layout.fileName()).withStyle(ChatFormatting.BLUE)));
-            
+
             tooltip.add(Component.translatable("tooltip.canvascontraptions.layout")
                     .append(Component.literal(layout.width() + "x" + layout.height()).withStyle(ChatFormatting.GOLD)));
-            
+
             tooltip.add(Component.translatable("tooltip.canvascontraptions.selected_tile")
                     .append(Component.literal(String.valueOf(layout.selectedIndex())).withStyle(ChatFormatting.YELLOW))
-                    .append(Component.literal(" / " + (layout.mapIds().size() - 1)).withStyle(ChatFormatting.DARK_GRAY)));
+                    .append(Component.literal(" / " + (layout.mapIds().size() - 1))
+                            .withStyle(ChatFormatting.DARK_GRAY)));
         }
         super.appendHoverText(stack, context, tooltip, flag);
     }

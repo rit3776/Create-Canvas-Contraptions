@@ -239,15 +239,17 @@ public class DraftingTabletGUI extends Screen {
         }
         g.dispose();
 
-        List<byte[]> slices = new ArrayList<>();
+        int totalSlices = tempRows * tempCols;
+        int sliceIndex = 0;
         for (int r = 0; r < tempRows; r++) {
             for (int c = 0; c < tempCols; c++) {
                 BufferedImage slice = canvas.getSubimage(c * 128, r * 128, 128, 128);
-                slices.add(convertToMapColors(slice));
+                byte[] data = convertToMapColors(slice);
+                PacketDistributor.sendToServer(new C2SImageUploadPacket(sliceIndex, totalSlices, data, tempCols, tempRows, activeHand, tempFileName));
+                sliceIndex++;
             }
         }
 
-        PacketDistributor.sendToServer(new C2SImageUploadPacket(slices, tempCols, tempRows, activeHand, tempFileName));
         this.selectedImage = null;
         this.statusMessage = Component.translatable("message.canvascontraptions.import_success").getString();
         this.statusTimer = 60;

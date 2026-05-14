@@ -47,7 +47,6 @@ public class PaintedMovementBehaviour implements MovementBehaviour {
         PoseStack poseStack = matrices.getModel();
         poseStack.pushPose();
 
-        // IMPORTANT: Translate to the block's local position in the contraption
         poseStack.translate(context.localPos.getX(), context.localPos.getY(), context.localPos.getZ());
 
         poseStack.translate(0.5, 0.5, 0.5);
@@ -64,7 +63,6 @@ public class PaintedMovementBehaviour implements MovementBehaviour {
 
         poseStack.mulPose(Axis.ZP.rotationDegrees(rotation * 90.0f));
 
-        // Positioning for the map face
         poseStack.translate(-0.5, 0.5, -0.485);
         poseStack.scale(1f / 128f, -1f / 128f, 1f);
 
@@ -73,7 +71,6 @@ public class PaintedMovementBehaviour implements MovementBehaviour {
                 : context.localPos;
         int light = LevelRenderer.getLightColor(context.world, lightPos);
 
-        // Use vanilla MapRenderer for stability and compatibility
         Minecraft.getInstance().gameRenderer.getMapRenderer()
                 .render(poseStack, buffer, mapId, data, false, light);
 

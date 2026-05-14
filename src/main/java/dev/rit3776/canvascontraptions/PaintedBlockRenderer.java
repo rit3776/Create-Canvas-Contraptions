@@ -16,15 +16,18 @@ public class PaintedBlockRenderer implements BlockEntityRenderer<PaintedBlockEnt
 
     @Override
     public void render(PaintedBlockEntity be, float partialTicks, PoseStack poseStack,
-                       MultiBufferSource buffer, int combinedLight, int combinedOverlay) {
+            MultiBufferSource buffer, int combinedLight, int combinedOverlay) {
         int id = be.getMapId();
-        if (id < 0) return;
+        if (id < 0)
+            return;
 
-        if (be.getLevel() == null) return;
+        if (be.getLevel() == null)
+            return;
         MapId mapId = new MapId(id);
         MapItemSavedData data = ClientMapCache.getOrCreate(id, be.getLevel());
-        
-        if (!ClientMapCache.hasData(id)) return;
+
+        if (!ClientMapCache.hasData(id))
+            return;
 
         Direction facing = be.getBlockState().getValue(PaintedBlock.FACING);
 
@@ -34,21 +37,20 @@ public class PaintedBlockRenderer implements BlockEntityRenderer<PaintedBlockEnt
 
         switch (facing) {
             case NORTH -> poseStack.mulPose(Axis.YP.rotationDegrees(180));
-            case EAST  -> poseStack.mulPose(Axis.YP.rotationDegrees(90));
-            case WEST  -> poseStack.mulPose(Axis.YP.rotationDegrees(270));
-            case UP    -> poseStack.mulPose(Axis.XP.rotationDegrees(-90));
-            case DOWN  -> poseStack.mulPose(Axis.XP.rotationDegrees(90));
-            default    -> {} // SOUTH
+            case EAST -> poseStack.mulPose(Axis.YP.rotationDegrees(90));
+            case WEST -> poseStack.mulPose(Axis.YP.rotationDegrees(270));
+            case UP -> poseStack.mulPose(Axis.XP.rotationDegrees(-90));
+            case DOWN -> poseStack.mulPose(Axis.XP.rotationDegrees(90));
+            default -> {
+            } // SOUTH
         }
 
         float angle = be.getRotation() * 90.0f;
         poseStack.mulPose(Axis.ZP.rotationDegrees(angle));
 
-        // Original 1.20.1 positioning logic
         poseStack.translate(-0.5, 0.5, -0.485);
         poseStack.scale(1f / 128f, -1f / 128f, 1f);
 
-        // Use false for 'active' to prevent rendering map paper background
         Minecraft.getInstance().gameRenderer.getMapRenderer()
                 .render(poseStack, buffer, mapId, data, false, combinedLight);
 

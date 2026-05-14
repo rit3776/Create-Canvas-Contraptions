@@ -25,23 +25,24 @@ public class MapColorHelper {
     }
 
     private static int fixColor(int val) {
-        // Minecraft 1.21.1's calculateRGBColor returns colors in a format where R and B are swapped compared to standard ARGB
         int a = (val >> 24) & 0xFF;
-        int b = (val >> 16) & 0xFF; // This is actually Blue in the returned value
+        int b = (val >> 16) & 0xFF;
         int g = (val >> 8) & 0xFF;
-        int r = val & 0xFF;         // This is actually Red in the returned value
+        int r = val & 0xFF;
         return (a << 24) | (r << 16) | (g << 8) | b;
     }
 
     private static synchronized void initLUT() {
-        if (lutInitialized) return;
+        if (lutInitialized)
+            return;
 
         List<MapColorData> mapColors = new ArrayList<>();
         for (int i = 0; i < 64; i++) {
             MapColor mapColor = MapColor.byId(i);
             if (mapColor != MapColor.NONE) {
                 for (int j = 0; j < 4; j++) {
-                    if (i == 0 && j == 0) continue; // Skip transparency
+                    if (i == 0 && j == 0)
+                        continue;
                     int rgb = fixColor(mapColor.calculateRGBColor(MapColor.Brightness.values()[j]));
                     mapColors.add(new MapColorData((byte) (i * 4 + j), new Color(rgb)));
                 }
@@ -78,9 +79,9 @@ public class MapColorHelper {
         return bestId;
     }
 
-    private record MapColorData(byte id, Color color) {}
+    private record MapColorData(byte id, Color color) {
+    }
 
-    // LAB color space conversion and DeltaE for better color matching
     private static double[] rgbToLab(int r, int g, int b) {
         double lr = pivotRgb(r / 255.0);
         double lg = pivotRgb(g / 255.0);
@@ -90,7 +91,6 @@ public class MapColorHelper {
         double y = lr * 0.2126 + lg * 0.7152 + lb * 0.0722;
         double z = lr * 0.0193 + lg * 0.1192 + lb * 0.9505;
 
-        // D65 illuminant
         x /= 0.95047;
         y /= 1.00000;
         z /= 1.08883;
@@ -99,7 +99,7 @@ public class MapColorHelper {
         y = pivotXyz(y);
         z = pivotXyz(z);
 
-        return new double[]{
+        return new double[] {
                 Math.max(0, 116 * y - 16),
                 500 * (x - y),
                 200 * (y - z)
@@ -115,7 +115,8 @@ public class MapColorHelper {
     }
 
     private static double deltaE(double[] lab1, double[] lab2) {
-        return Math.sqrt(Math.pow(lab1[0] - lab2[0], 2) + Math.pow(lab1[1] - lab2[1], 2) + Math.pow(lab1[2] - lab2[2], 2));
+        return Math
+                .sqrt(Math.pow(lab1[0] - lab2[0], 2) + Math.pow(lab1[1] - lab2[1], 2) + Math.pow(lab1[2] - lab2[2], 2));
     }
 
     public static Color getColorFromMapByte(byte colorByte) {
