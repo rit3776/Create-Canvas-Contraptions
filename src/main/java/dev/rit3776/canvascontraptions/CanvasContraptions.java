@@ -38,7 +38,9 @@ public class CanvasContraptions {
                     .icon(() -> CCItems.FILLED_DRAFTING_PAPER.asStack())
     ).register();
 
-    public CanvasContraptions(IEventBus modEventBus) {
+    public CanvasContraptions(IEventBus modEventBus, net.neoforged.fml.ModContainer container) {
+        container.registerConfig(net.neoforged.fml.config.ModConfig.Type.SERVER, CCServerConfig.SPEC);
+
         SERIALIZERS.register(modEventBus);
         CCDataComponents.register(modEventBus);
 

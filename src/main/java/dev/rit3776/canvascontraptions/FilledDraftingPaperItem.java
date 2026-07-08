@@ -48,7 +48,7 @@ public class FilledDraftingPaperItem extends Item {
         BlockPos placePos = pos.relative(face);
 
         if (level.getBlockState(placePos).isAir() || level.getBlockState(placePos).canBeReplaced()) {
-            if (!player.getAbilities().instabuild) {
+            if (!player.getAbilities().instabuild && CCServerConfig.CONSUME_DYES.get()) {
                 if (!consumeDyes(player)) {
                     player.displayClientMessage(Component.translatable("message.canvascontraptions.missing_dyes"),
                             true);
