@@ -12,6 +12,8 @@ import net.minecraft.world.item.crafting.SimpleCraftingRecipeSerializer;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.eventbus.api.IEventBus;
 import net.minecraftforge.fml.common.Mod;
+import net.minecraftforge.fml.ModLoadingContext;
+import net.minecraftforge.fml.config.ModConfig;
 import net.minecraftforge.fml.event.lifecycle.FMLCommonSetupEvent;
 import net.minecraftforge.fml.javafmlmod.FMLJavaModLoadingContext;
 import net.minecraftforge.registries.DeferredRegister;
@@ -44,6 +46,8 @@ public class CanvasContraptions {
     ).register();
 
     public CanvasContraptions() {
+        ModLoadingContext.get().registerConfig(ModConfig.Type.SERVER, CCServerConfig.SPEC);
+
         IEventBus modEventBus = FMLJavaModLoadingContext.get().getModEventBus();
 
         SERIALIZERS.register(modEventBus);
