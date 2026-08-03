@@ -36,7 +36,8 @@ public class DraftingTabletGUI extends Screen {
     private String fileName = "";
 
     private boolean showLibrary = false;
-    private boolean dither = true;
+    private ImageImportHelper.DitherMode ditherMode = ImageImportHelper.DitherMode.ATKINSON;
+    private MapColorHelper.ColorMode colorMode = MapColorHelper.ColorMode.LAB;
     private boolean keepAspectRatio = true;
     private List<String> savedNames = new ArrayList<>();
     private List<CCDataComponents.DraftingLayout> library = new ArrayList<>();
@@ -118,32 +119,38 @@ public class DraftingTabletGUI extends Screen {
             this.addRenderableWidget(Button.builder(Component.translatable("gui.canvascontraptions.button.cols_minus"), b -> {
                 tempCols = Math.max(1, tempCols - 1);
                 init();
-            }).bounds(bx, 40, bw / 2 - 2, 20).build());
+            }).bounds(bx, 35, bw / 2 - 2, 20).build());
             this.addRenderableWidget(Button.builder(Component.translatable("gui.canvascontraptions.button.cols_plus"), b -> {
                 tempCols++;
                 init();
-            }).bounds(bx + bw / 2 + 2, 40, bw / 2 - 2, 20).build());
+            }).bounds(bx + bw / 2 + 2, 35, bw / 2 - 2, 20).build());
 
             this.addRenderableWidget(Button.builder(Component.translatable("gui.canvascontraptions.button.rows_minus"), b -> {
                 tempRows = Math.max(1, tempRows - 1);
                 init();
-            }).bounds(bx, 65, bw / 2 - 2, 20).build());
+            }).bounds(bx, 60, bw / 2 - 2, 20).build());
             this.addRenderableWidget(Button.builder(Component.translatable("gui.canvascontraptions.button.rows_plus"), b -> {
                 tempRows++;
                 init();
-            }).bounds(bx + bw / 2 + 2, 65, bw / 2 - 2, 20).build());
+            }).bounds(bx + bw / 2 + 2, 60, bw / 2 - 2, 20).build());
             
-            this.addRenderableWidget(Button.builder(Component.translatable("gui.canvascontraptions.button.dither", 
-                    Component.translatable(dither ? "gui.canvascontraptions.label.on" : "gui.canvascontraptions.label.off").getString()), b -> {
-                dither = !dither;
+            this.addRenderableWidget(Button.builder(Component.translatable("gui.canvascontraptions.button.dither", getDitherLabel()), b -> {
+                ImageImportHelper.DitherMode[] modes = ImageImportHelper.DitherMode.values();
+                ditherMode = modes[(ditherMode.ordinal() + 1) % modes.length];
                 init();
-            }).bounds(bx, 95, bw, 20).build());
+            }).bounds(bx, 85, bw, 20).build());
+
+            this.addRenderableWidget(Button.builder(Component.translatable("gui.canvascontraptions.button.color_mode", getColorModeLabel()), b -> {
+                MapColorHelper.ColorMode[] modes = MapColorHelper.ColorMode.values();
+                colorMode = modes[(colorMode.ordinal() + 1) % modes.length];
+                init();
+            }).bounds(bx, 110, bw, 20).build());
 
             this.addRenderableWidget(Button.builder(Component.translatable("gui.canvascontraptions.button.aspect", 
                     Component.translatable(keepAspectRatio ? "gui.canvascontraptions.label.fit" : "gui.canvascontraptions.label.stretch").getString()), b -> {
                 keepAspectRatio = !keepAspectRatio;
                 init();
-            }).bounds(bx, 120, bw, 20).build());
+            }).bounds(bx, 135, bw, 20).build());
             
             this.addRenderableWidget(Button.builder(Component.translatable("gui.canvascontraptions.button.import"), b -> submitImport())
                     .bounds(bx, height - 55, bw, 20).build());
@@ -152,6 +159,21 @@ public class DraftingTabletGUI extends Screen {
                 init();
             }).bounds(bx, height - 30, bw, 20).build());
         }
+    }
+
+    private String getDitherLabel() {
+        return switch (ditherMode) {
+            case NONE -> Component.translatable("gui.canvascontraptions.dither.none").getString();
+            case ATKINSON -> Component.translatable("gui.canvascontraptions.dither.atkinson").getString();
+            case STUCKI -> Component.translatable("gui.canvascontraptions.dither.stucki").getString();
+        };
+    }
+
+    private String getColorModeLabel() {
+        return switch (colorMode) {
+            case LAB -> Component.translatable("gui.canvascontraptions.color_mode.lab").getString();
+            case RGB -> Component.translatable("gui.canvascontraptions.color_mode.rgb").getString();
+        };
     }
 
     private void selectFile() {
@@ -183,7 +205,8 @@ public class DraftingTabletGUI extends Screen {
 
     private void submitImport() {
         if (selectedImage == null) return;
-        ImageImportHelper.uploadImage(selectedImage, tempCols, tempRows, keepAspectRatio, dither, activeHand, tempFileName);
+        String formattedName = ImageImportHelper.formatImageName(tempFileName, colorMode, ditherMode, tempCols, tempRows);
+        ImageImportHelper.uploadImage(selectedImage, tempCols, tempRows, keepAspectRatio, colorMode, ditherMode, activeHand, formattedName);
         this.selectedImage = null;
         this.statusMessage = Component.translatable("message.canvascontraptions.import_success").getString();
         this.statusTimer = 60;
@@ -319,7 +342,8 @@ public class DraftingTabletGUI extends Screen {
             guiGraphics.disableScissor();
             if (savedNames.isEmpty()) guiGraphics.drawString(font, Component.translatable("gui.canvascontraptions.library_empty"), lx, ly, 0x666666);
         } else if (selectedImage != null) {
-            guiGraphics.drawString(font, Component.translatable("gui.canvascontraptions.label.image", tempFileName), 10, height - 85, 0xAAAAAA);
+            String previewName = ImageImportHelper.formatImageName(tempFileName, colorMode, ditherMode, tempCols, tempRows);
+            guiGraphics.drawString(font, Component.translatable("gui.canvascontraptions.label.image", previewName), 10, height - 85, 0xAAAAAA);
             guiGraphics.drawString(font, Component.translatable("gui.canvascontraptions.label.size", selectedImage.getWidth() + "x" + selectedImage.getHeight()), 10, height - 74, 0x00FF00);
 
             double gridAspect = (double) tempCols / tempRows;

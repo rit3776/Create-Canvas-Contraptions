@@ -20,6 +20,31 @@ import java.util.function.BiConsumer;
 
 public class ImageImportHelper {
 
+    public enum DitherMode {
+        NONE,
+        ATKINSON,
+        STUCKI
+    }
+
+    public static String formatImageName(String rawFileName, MapColorHelper.ColorMode colorMode, DitherMode ditherMode, int columns, int rows) {
+        if (rawFileName == null) rawFileName = "";
+        String truncated = rawFileName;
+        if (truncated.length() > 16) {
+            truncated = truncated.substring(0, 16) + "...";
+        }
+        String ditherStr = switch (ditherMode) {
+            case NONE -> Component.translatable("gui.canvascontraptions.dither.none").getString();
+            case ATKINSON -> Component.translatable("gui.canvascontraptions.dither.atkinson").getString();
+            case STUCKI -> Component.translatable("gui.canvascontraptions.dither.stucki").getString();
+        };
+        String colorModeStr = switch (colorMode) {
+            case LAB -> Component.translatable("gui.canvascontraptions.color_mode.lab").getString();
+            case RGB -> Component.translatable("gui.canvascontraptions.color_mode.rgb").getString();
+        };
+        String sizeStr = columns + "x" + rows;
+        return truncated + " - " + ditherStr + " - " + colorModeStr + " - " + sizeStr;
+    }
+
     public static void selectFile(BiConsumer<BufferedImage, File> callback) {
         new Thread(() -> {
             try (MemoryStack stack = MemoryStack.stackPush()) {
@@ -65,7 +90,7 @@ public class ImageImportHelper {
         return new DynamicTexture(nativeImage);
     }
 
-    public static void uploadImage(BufferedImage selectedImage, int columns, int rows, boolean keepAspectRatio, boolean dither, InteractionHand activeHand, String fileName) {
+    public static void uploadImage(BufferedImage selectedImage, int columns, int rows, boolean keepAspectRatio, MapColorHelper.ColorMode colorMode, DitherMode ditherMode, InteractionHand activeHand, String fileName) {
         if (selectedImage == null)
             return;
 
@@ -88,63 +113,92 @@ public class ImageImportHelper {
         }
         g.dispose();
 
+        // 1. Convert and dither the entire canvas BEFORE splitting into tiles
+        byte[] fullMapColors = convertToMapColors(canvas, colorMode, ditherMode);
+
+        // 2. Slice full map color array into 128x128 tile arrays
         int totalSlices = rows * columns;
         int sliceIndex = 0;
         for (int r = 0; r < rows; r++) {
             for (int c = 0; c < columns; c++) {
-                BufferedImage slice = canvas.getSubimage(c * 128, r * 128, 128, 128);
-                byte[] data = convertToMapColors(slice, dither);
-                PacketDistributor.sendToServer(new C2SImageUploadPacket(sliceIndex, totalSlices, data, columns, rows,
+                byte[] sliceData = new byte[128 * 128];
+                for (int y = 0; y < 128; y++) {
+                    int fullY = r * 128 + y;
+                    for (int x = 0; x < 128; x++) {
+                        int fullX = c * 128 + x;
+                        sliceData[y * 128 + x] = fullMapColors[fullY * canvasWidth + fullX];
+                    }
+                }
+                PacketDistributor.sendToServer(new C2SImageUploadPacket(sliceIndex, totalSlices, sliceData, columns, rows,
                         activeHand, fileName));
                 sliceIndex++;
             }
         }
     }
 
-    public static byte[] convertToMapColors(BufferedImage image, boolean dither) {
-        byte[] colors = new byte[128 * 128];
-        if (dither) {
-            float[][][] errorBuf = new float[128][128][3];
-            for (int y = 0; y < 128; y++) {
-                for (int x = 0; x < 128; x++) {
+    public static byte[] convertToMapColors(BufferedImage image, MapColorHelper.ColorMode colorMode, DitherMode ditherMode) {
+        int width = image.getWidth();
+        int height = image.getHeight();
+        byte[] colors = new byte[width * height];
+
+        if (ditherMode == DitherMode.NONE) {
+            for (int y = 0; y < height; y++) {
+                for (int x = 0; x < width; x++) {
                     int argb = image.getRGB(x, y);
                     if (((argb >> 24) & 0xFF) < 1) {
-                        colors[y * 128 + x] = 0;
+                        colors[y * width + x] = 0;
+                    } else {
+                        colors[y * width + x] = MapColorHelper.getNearestMapColor(
+                                (argb >> 16) & 0xFF, (argb >> 8) & 0xFF, argb & 0xFF, colorMode);
+                    }
+                }
+            }
+        } else {
+            float[][][] errorBuf = new float[height][width][3];
+            for (int y = 0; y < height; y++) {
+                for (int x = 0; x < width; x++) {
+                    int argb = image.getRGB(x, y);
+                    if (((argb >> 24) & 0xFF) < 1) {
+                        colors[y * width + x] = 0;
                         continue;
                     }
 
-                    int rgb = argb;
-                    float r = ((rgb >> 16) & 0xFF) + errorBuf[x][y][0];
-                    float g = ((rgb >> 8) & 0xFF) + errorBuf[x][y][1];
-                    float b = (rgb & 0xFF) + errorBuf[x][y][2];
+                    float r = ((argb >> 16) & 0xFF) + errorBuf[y][x][0];
+                    float g = ((argb >> 8) & 0xFF) + errorBuf[y][x][1];
+                    float b = (argb & 0xFF) + errorBuf[y][x][2];
 
-                    byte idx = MapColorHelper.getNearestMapColor((int) r, (int) g, (int) b);
-                    colors[y * 128 + x] = idx;
+                    byte idx = MapColorHelper.getNearestMapColor((int) r, (int) g, (int) b, colorMode);
+                    colors[y * width + x] = idx;
 
                     Color actual = MapColorHelper.getColorFromMapByte(idx);
                     float er = r - actual.getRed();
                     float eg = g - actual.getGreen();
                     float eb = b - actual.getBlue();
 
-                    if (x + 1 < 128)
-                        diffuse(errorBuf, x + 1, y, er, eg, eb, 7 / 16f);
-                    if (y + 1 < 128) {
-                        if (x > 0)
-                            diffuse(errorBuf, x - 1, y + 1, er, eg, eb, 3 / 16f);
-                        diffuse(errorBuf, x, y + 1, er, eg, eb, 5 / 16f);
-                        if (x + 1 < 128)
-                            diffuse(errorBuf, x + 1, y + 1, er, eg, eb, 1 / 16f);
-                    }
-                }
-            }
-        } else {
-            for (int y = 0; y < 128; y++) {
-                for (int x = 0; x < 128; x++) {
-                    int argb = image.getRGB(x, y);
-                    if (((argb >> 24) & 0xFF) < 1) {
-                        colors[y * 128 + x] = 0;
-                    } else {
-                        colors[y * 128 + x] = MapColorHelper.getNearestMapColor((argb >> 16) & 0xFF, (argb >> 8) & 0xFF, argb & 0xFF);
+                    if (ditherMode == DitherMode.ATKINSON) {
+                        // Atkinson dithering: 6 neighbors, 1/8 factor each
+                        diffuse(errorBuf, width, height, x + 1, y,     er, eg, eb, 1 / 8f);
+                        diffuse(errorBuf, width, height, x + 2, y,     er, eg, eb, 1 / 8f);
+                        diffuse(errorBuf, width, height, x - 1, y + 1, er, eg, eb, 1 / 8f);
+                        diffuse(errorBuf, width, height, x,     y + 1, er, eg, eb, 1 / 8f);
+                        diffuse(errorBuf, width, height, x + 1, y + 1, er, eg, eb, 1 / 8f);
+                        diffuse(errorBuf, width, height, x,     y + 2, er, eg, eb, 1 / 8f);
+                    } else if (ditherMode == DitherMode.STUCKI) {
+                        // Stucki dithering: 12 neighbors, divisor 42
+                        diffuse(errorBuf, width, height, x + 1, y,     er, eg, eb, 8 / 42f);
+                        diffuse(errorBuf, width, height, x + 2, y,     er, eg, eb, 4 / 42f);
+
+                        diffuse(errorBuf, width, height, x - 2, y + 1, er, eg, eb, 2 / 42f);
+                        diffuse(errorBuf, width, height, x - 1, y + 1, er, eg, eb, 4 / 42f);
+                        diffuse(errorBuf, width, height, x,     y + 1, er, eg, eb, 8 / 42f);
+                        diffuse(errorBuf, width, height, x + 1, y + 1, er, eg, eb, 4 / 42f);
+                        diffuse(errorBuf, width, height, x + 2, y + 1, er, eg, eb, 2 / 42f);
+
+                        diffuse(errorBuf, width, height, x - 2, y + 2, er, eg, eb, 1 / 42f);
+                        diffuse(errorBuf, width, height, x - 1, y + 2, er, eg, eb, 2 / 42f);
+                        diffuse(errorBuf, width, height, x,     y + 2, er, eg, eb, 4 / 42f);
+                        diffuse(errorBuf, width, height, x + 1, y + 2, er, eg, eb, 2 / 42f);
+                        diffuse(errorBuf, width, height, x + 2, y + 2, er, eg, eb, 1 / 42f);
                     }
                 }
             }
@@ -152,9 +206,12 @@ public class ImageImportHelper {
         return colors;
     }
 
-    private static void diffuse(float[][][] buf, int x, int y, float er, float eg, float eb, float w) {
-        buf[x][y][0] += er * w;
-        buf[x][y][1] += eg * w;
-        buf[x][y][2] += eb * w;
+    private static void diffuse(float[][][] buf, int width, int height, int x, int y, float er, float eg, float eb, float w) {
+        if (x >= 0 && x < width && y >= 0 && y < height) {
+            buf[y][x][0] += er * w;
+            buf[y][x][1] += eg * w;
+            buf[y][x][2] += eb * w;
+        }
     }
 }
+

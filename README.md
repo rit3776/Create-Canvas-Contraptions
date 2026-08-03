@@ -1,8 +1,9 @@
 # Create: Canvas Contraptions
 
-**Version:** 0.1.2  
-**Minecraft Version:** Forge 1.20.1 / NeoForge 1.21.1  
-**Create Version:** 6.0.6-6.0.8 / 6.0.6-6.0.10
+| Minecraft | Create | ~0.1.2 | 0.2.0~ |
+| --- | --- | --- | --- |
+| NeoForge 1.21.1 | 6.0.6-6.0.10 | 〇 | 〇 |
+| Forge 1.20.1 | 6.0.6-6.0.8 | 〇 | × |
 
 ---
 
@@ -21,15 +22,15 @@
 * **Painted Block**: The visual output block that displays your image. This is a system-generated block and is not available as a standard craftable item.
 
 ### Mechanics
-* **Image Placement**: When placing an image using a *Filled Drafting Paper* or *Drafting Tablet*, the process consumes **Cyan, Magenta, Yellow, and Black dyes** from your inventory (one of each per placement).
+* **Image Placement**: When placing an image using a *Filled Drafting Paper* or *Drafting Tablet*, the process consumes **Cyan, Magenta, Yellow, and Black dyes** from your inventory (This is configurable on 0.2.0+).
 * **Create Compatibility**: Images placed using this mod remain intact and visible when moved by Create Contraptions or Trains.
 
 * TIP: You can rotate the image using a wrench.
 
 ---
 
-## ⚠️ Important Recommendations
-* **Duplicate your papers!** Since the *Filled Drafting Paper* is consumed when you place an image, it is highly recommended to duplicate your filled papers in a crafting grid before using them.
+## Recommendations
+* **Duplicate your papers**: Since the *Filled Drafting Paper* is consumed when you place an image, it is highly recommended to duplicate your filled papers in a crafting grid before using them.
 * **Work in Progress**: This mod was originally developed for a private server. Please be aware that **debugging and optimization are currently incomplete**. You may encounter minor issues or performance quirks.
 
 ---

@@ -30,7 +30,8 @@ public class DraftingGUI extends Screen {
     private String selectedFileName = "";
     private int columns = 1;
     private int rows = 1;
-    private boolean dither = true;
+    private ImageImportHelper.DitherMode ditherMode = ImageImportHelper.DitherMode.ATKINSON;
+    private MapColorHelper.ColorMode colorMode = MapColorHelper.ColorMode.LAB;
     private boolean keepAspectRatio = true;
 
     private DynamicTexture previewTexture;
@@ -106,32 +107,38 @@ public class DraftingGUI extends Screen {
                 this.addRenderableWidget(Button.builder(Component.translatable("gui.canvascontraptions.button.cols_minus"), b -> {
                     columns = Math.max(1, columns - 1);
                     init();
-                }).bounds(bx, 40, bw / 2 - 2, 20).build());
+                }).bounds(bx, 35, bw / 2 - 2, 20).build());
                 this.addRenderableWidget(Button.builder(Component.translatable("gui.canvascontraptions.button.cols_plus"), b -> {
                     columns++;
                     init();
-                }).bounds(bx + bw / 2 + 2, 40, bw / 2 - 2, 20).build());
+                }).bounds(bx + bw / 2 + 2, 35, bw / 2 - 2, 20).build());
 
                 this.addRenderableWidget(Button.builder(Component.translatable("gui.canvascontraptions.button.rows_minus"), b -> {
                     rows = Math.max(1, rows - 1);
                     init();
-                }).bounds(bx, 65, bw / 2 - 2, 20).build());
+                }).bounds(bx, 60, bw / 2 - 2, 20).build());
                 this.addRenderableWidget(Button.builder(Component.translatable("gui.canvascontraptions.button.rows_plus"), b -> {
                     rows++;
                     init();
-                }).bounds(bx + bw / 2 + 2, 65, bw / 2 - 2, 20).build());
+                }).bounds(bx + bw / 2 + 2, 60, bw / 2 - 2, 20).build());
 
-                this.addRenderableWidget(Button.builder(Component.translatable("gui.canvascontraptions.button.dither", 
-                        Component.translatable(dither ? "gui.canvascontraptions.label.on" : "gui.canvascontraptions.label.off").getString()), b -> {
-                    dither = !dither;
+                this.addRenderableWidget(Button.builder(Component.translatable("gui.canvascontraptions.button.dither", getDitherLabel()), b -> {
+                    ImageImportHelper.DitherMode[] modes = ImageImportHelper.DitherMode.values();
+                    ditherMode = modes[(ditherMode.ordinal() + 1) % modes.length];
                     init();
-                }).bounds(bx, 95, bw, 20).build());
+                }).bounds(bx, 85, bw, 20).build());
+
+                this.addRenderableWidget(Button.builder(Component.translatable("gui.canvascontraptions.button.color_mode", getColorModeLabel()), b -> {
+                    MapColorHelper.ColorMode[] modes = MapColorHelper.ColorMode.values();
+                    colorMode = modes[(colorMode.ordinal() + 1) % modes.length];
+                    init();
+                }).bounds(bx, 110, bw, 20).build());
 
                 this.addRenderableWidget(Button.builder(Component.translatable("gui.canvascontraptions.button.aspect", 
                         Component.translatable(keepAspectRatio ? "gui.canvascontraptions.label.fit" : "gui.canvascontraptions.label.stretch").getString()), b -> {
                     keepAspectRatio = !keepAspectRatio;
                     init();
-                }).bounds(bx, 120, bw, 20).build());
+                }).bounds(bx, 135, bw, 20).build());
 
                 this.addRenderableWidget(Button.builder(Component.translatable("gui.canvascontraptions.button.import"), b -> submit())
                         .bounds(bx, height - 55, bw, 20).build());
@@ -141,6 +148,21 @@ public class DraftingGUI extends Screen {
                 }).bounds(bx, height - 30, bw, 20).build());
             }
         }
+    }
+
+    private String getDitherLabel() {
+        return switch (ditherMode) {
+            case NONE -> Component.translatable("gui.canvascontraptions.dither.none").getString();
+            case ATKINSON -> Component.translatable("gui.canvascontraptions.dither.atkinson").getString();
+            case STUCKI -> Component.translatable("gui.canvascontraptions.dither.stucki").getString();
+        };
+    }
+
+    private String getColorModeLabel() {
+        return switch (colorMode) {
+            case LAB -> Component.translatable("gui.canvascontraptions.color_mode.lab").getString();
+            case RGB -> Component.translatable("gui.canvascontraptions.color_mode.rgb").getString();
+        };
     }
 
     private void selectFile() {
@@ -169,7 +191,8 @@ public class DraftingGUI extends Screen {
 
     private void submit() {
         if (selectedImage == null) return;
-        ImageImportHelper.uploadImage(selectedImage, columns, rows, keepAspectRatio, dither, activeHand, selectedFileName);
+        String formattedName = ImageImportHelper.formatImageName(selectedFileName, colorMode, ditherMode, columns, rows);
+        ImageImportHelper.uploadImage(selectedImage, columns, rows, keepAspectRatio, colorMode, ditherMode, activeHand, formattedName);
         this.onClose();
     }
 
@@ -257,7 +280,8 @@ public class DraftingGUI extends Screen {
             }
 
             if (selectedImage != null) {
-                guiGraphics.drawString(font, Component.translatable("gui.canvascontraptions.label.image", selectedFileName), 10, height - 85, 0xAAAAAA);
+                String previewName = ImageImportHelper.formatImageName(selectedFileName, colorMode, ditherMode, columns, rows);
+                guiGraphics.drawString(font, Component.translatable("gui.canvascontraptions.label.image", previewName), 10, height - 85, 0xAAAAAA);
                 guiGraphics.drawString(font, Component.translatable("gui.canvascontraptions.label.size", selectedImage.getWidth() + "x" + selectedImage.getHeight()), 10, height - 74, 0x00FF00);
             }
         } else if (mode == Mode.FILLED && mapIds != null) {
