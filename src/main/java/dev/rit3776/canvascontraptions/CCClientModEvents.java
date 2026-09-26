@@ -5,10 +5,19 @@ import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.client.event.EntityRenderersEvent;
 
+import net.neoforged.fml.event.lifecycle.FMLClientSetupEvent;
+
 @EventBusSubscriber(modid = CanvasContraptions.MODID, value = Dist.CLIENT, bus = EventBusSubscriber.Bus.MOD)
 public class CCClientModEvents {
     @SubscribeEvent
     public static void registerRenderers(EntityRenderersEvent.RegisterRenderers event) {
         event.registerBlockEntityRenderer(CCBlockEntities.PAINTED_BLOCK_ENTITY.get(), PaintedBlockRenderer::new);
+    }
+
+    @SubscribeEvent
+    public static void onClientSetup(FMLClientSetupEvent event) {
+        if (CCClientConfig.PRELOAD_LUT.get()) {
+            MapColorHelper.initLUT();
+        }
     }
 }

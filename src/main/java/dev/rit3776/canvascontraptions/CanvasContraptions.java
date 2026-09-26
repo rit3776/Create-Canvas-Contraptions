@@ -40,6 +40,7 @@ public class CanvasContraptions {
 
     public CanvasContraptions(IEventBus modEventBus, net.neoforged.fml.ModContainer container) {
         container.registerConfig(net.neoforged.fml.config.ModConfig.Type.SERVER, CCServerConfig.SPEC);
+        container.registerConfig(net.neoforged.fml.config.ModConfig.Type.CLIENT, CCClientConfig.SPEC);
 
         SERIALIZERS.register(modEventBus);
         CCDataComponents.register(modEventBus);

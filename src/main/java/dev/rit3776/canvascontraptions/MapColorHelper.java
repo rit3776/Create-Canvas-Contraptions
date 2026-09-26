@@ -43,9 +43,12 @@ public class MapColorHelper {
         return (a << 24) | (r << 16) | (g << 8) | b;
     }
 
-    private static synchronized void initLUT() {
+    public static synchronized void initLUT() {
         if (lutInitialized)
             return;
+
+        CanvasContraptions.LOGGER.info("Initializing Map Color LUT...");
+        long startTime = System.currentTimeMillis();
 
         List<MapColorData> mapColors = new ArrayList<>();
         for (int i = 0; i < 64; i++) {
@@ -73,6 +76,7 @@ public class MapColorHelper {
             }
         }
         lutInitialized = true;
+        CanvasContraptions.LOGGER.info("Map Color LUT initialized in {} ms", System.currentTimeMillis() - startTime);
     }
 
     private static byte findNearestLab2000(int r, int g, int b, List<MapColorData> mapColors) {
