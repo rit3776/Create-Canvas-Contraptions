@@ -22,7 +22,7 @@
 * **Painted Block**: The visual output block that displays your image. This is a system-generated block and is not available as a standard craftable item.
 
 ### Mechanics
-* **Image Placement**: When placing an image using a *Filled Drafting Paper* or *Drafting Tablet*, the process consumes **Cyan, Magenta, Yellow, and Black dyes** from your inventory (This is configurable on 0.2.0+).
+* **Image Placement**: When placing an image using a *Filled Drafting Paper* or *Drafting Tablet*, the process consumes **Cyan, Magenta, Yellow, and Black dyes** from your inventory (This is configurable on 0.2.0+, Default is false on 0.2.1+).
 * **Create Compatibility**: Images placed using this mod remain intact and visible when moved by Create Contraptions or Trains.
 
 * TIP: You can rotate the image using a wrench.
