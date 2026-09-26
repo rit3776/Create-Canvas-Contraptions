@@ -10,7 +10,7 @@ public class CCServerConfig {
         ModConfigSpec.Builder builder = new ModConfigSpec.Builder();
         builder.push("general");
         CONSUME_DYES = builder.comment("Whether to consume dyes when placing images in survival mode.")
-                .define("consumeDyes", true);
+                .define("consumeDyes", false);
         builder.pop();
         SPEC = builder.build();
     }
