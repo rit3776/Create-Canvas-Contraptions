@@ -24,6 +24,11 @@ public class PaintedMovementBehaviour implements MovementBehaviour {
     }
 
     @Override
+    public boolean disableBlockEntityRendering() {
+        return true;
+    }
+
+    @Override
     @OnlyIn(Dist.CLIENT)
     public void renderInContraption(MovementContext context, VirtualRenderWorld renderWorld,
             ContraptionMatrices matrices, MultiBufferSource buffer) {
@@ -44,7 +49,7 @@ public class PaintedMovementBehaviour implements MovementBehaviour {
         Direction facing = context.state.getValue(PaintedBlock.FACING);
         int rotation = context.blockEntityData.getInt("Rotation");
 
-        PoseStack poseStack = matrices.getModel();
+        PoseStack poseStack = matrices.getModelViewProjection();
         poseStack.pushPose();
 
         poseStack.translate(context.localPos.getX(), context.localPos.getY(), context.localPos.getZ());
